@@ -84,6 +84,14 @@ CLONE_MAX_PAGES = 1000
 
 ---
 
+## Prerequisites
+
+- Python 3.12+ with `pip`
+- An Ollama endpoint with `mistral-large-3:675b-cloud` available; set `OLLAMA_HOST` (and `OLLAMA_API_KEY` if required) to point at it. Defaults to `http://localhost:11434`.
+- Writable `data/` directory; the harvester will materialise `data/vault.db` from `src/vault/schema.sql`.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -95,6 +103,10 @@ pip install -r requirements.txt
 # 2. Configure targets (edit main.py)
 TARGET_URLS = ["https://your-site.net/threads/example.123/"]  # per-thread harvest
 TARGET_SITE = "https://your-site.net/"                        # full-site clone
+
+# 2a. Point at your Ollama host (if not local)
+export OLLAMA_HOST="https://ollama.example.com"
+# Optional: export OLLAMA_API_KEY="your-token"
 
 # 3. Run (harvest → clone → launch AI agent)
 python main.py
@@ -136,4 +148,3 @@ The demo page will then be live at:
 pip install pytest
 pytest tests/ -v
 ```
-
