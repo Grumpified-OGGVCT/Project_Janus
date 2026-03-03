@@ -1,109 +1,113 @@
 # Project Janus — Agent Instructions
 
-> **Anti-Reductionist Mandate**: All agents operating on this repository MUST follow these rules without exception.
+## 1. Project Overview
 
-## Architecture Overview
+Project Janus is a **sovereign, closed-loop archival system**. It crawls, clones, archives, and queries the web using a fully local AI brain (Mistral Large 3 via Ollama). No external APIs. No censorship.
 
-Project Janus is a sovereign, closed-loop archival system with four core components:
+### Architecture
 
 | Component | File | Role |
-|-----------|------|------|
+|---|---|---|
 | Brain | `run_agent.py` | Mistral Large 3 via Ollama; drives tool-call loop |
 | Librarian | `src/mcp_server/server.py` | MCP tools: `search_archives`, `view_thread_history` |
-| Thread Harvester | `src/harvester/engine.py` | Per-thread crawl + Wayback CDX snapshots → `vault.db` |
+| Thread Harvester | `src/harvester/engine.py` | Per-thread crawl + Wayback CDX snapshots → vault.db |
 | Site Cloner | `src/harvester/site_cloner.py` | Full-domain Markdown mirror with rewritten links |
 | Vault | `src/vault/schema.sql` | SQLite schema with temporal versioning |
-| Demo Page | `docs/index.html` | GitHub Pages demo with live Ollama API calls |
-| Demo Script | `scripts/run_demo.py` | Canned query runner for CI demo output |
+| Live Demo | `docs/index.html` | GitHub Pages demo with inner thoughts panel |
 
-## Mandatory Rules
+---
 
-### 1. Anti-Reductionist Mandate
+## 2. Anti-Reductionist Mandate
 
-**NEVER** do any of the following:
-- ❌ Remove imports (even if they appear unused — they may be used dynamically)
-- ❌ Delete files or directories
-- ❌ Remove or simplify test cases
-- ❌ Replace working code with simplified stubs
-- ❌ Remove comments or docstrings
-- ❌ Reduce function signatures or parameters
-- ❌ "Optimize" by removing error handling paths
-- ❌ Delete configuration options or environment variable support
+> **You are encouraged to build, code, enhance, and improve.** The restriction is specifically against **gratuitous deletion** — removing things simply because their use appears out of scope.
 
-**ALWAYS** do the following:
-- ✅ Add new functionality additively
-- ✅ Expand test coverage (test count must be >= previous baseline)
-- ✅ Preserve all existing imports, even if adding new ones
-- ✅ Keep all error handling paths
-- ✅ Maintain or increase code documentation
-- ✅ Add type hints where missing (never remove existing ones)
+### ✅ DO (encouraged)
 
-### 2. Security Invariants
+- **Write new code** — add features, modules, tests, utilities
+- **Enhance existing code** — improve performance, readability, error handling
+- **Add new files** — create documentation, workflows, configs, helpers
+- **Fix bugs** — correct broken behavior, add missing error handling
+- **Expand tests** — increase coverage, add edge cases, new test files
+- **Refactor for clarity** — restructure code to be cleaner, as long as all functionality is preserved
+- **Add imports** — bring in new dependencies as needed for new features
+- **Modify existing code** — update, extend, and evolve implementations
 
-- **Read-only vault**: The MCP server MUST always open `vault.db` in `mode=ro`. Never modify this.
-- **SHA-256 integrity**: Content hashing for deduplication must be preserved.
-- **Local-only AI**: No external API calls to OpenAI, Anthropic, or similar. All inference via Ollama.
-- **No credential exposure**: Never hardcode API keys, tokens, or secrets.
-- **Input sanitization**: All user inputs in the demo page must be escaped before rendering.
+### ❌ DON'T (prohibited)
 
-### 3. PR Checklist (Mandatory for All PRs)
+- **Delete imports** "because they're unused" — they may be used elsewhere, planned for use, or serve as documentation of available capabilities
+- **Delete files** "for cleanup" — if a file exists, it was put there for a reason
+- **Remove test cases** "to make tests pass" — fix the code, don't delete the test
+- **Strip comments** "to clean up" — comments are documentation and context
+- **Simplify code** by removing error handling, fallback paths, or edge case coverage
+- **Remove features** "to reduce complexity" — complexity exists because the use case demands it
+- **Delete configuration stanzas** because "they're not currently active"
+
+### The Core Principle
+
+> Stock AI agents are notorious for deleting imports, removing "unused" code, and stripping files that look redundant. **This is catastrophic behavior.** If you're not sure whether something is needed — leave it. If you want to deprecate something, add a deprecation notice comment, don't delete it.
+
+---
+
+## 3. Security Invariants
+
+These invariants MUST be maintained in every change:
+
+1. **MCP Server is read-only** — `server.py` must never write to the vault
+2. **SHA-256 integrity** — content hashing for deduplication must not be weakened
+3. **No external API calls** — all inference runs through local Ollama
+4. **Input sanitization** — any user-facing input (demo page) must be escaped for XSS
+5. **No secrets in code** — API keys, tokens, and credentials go in environment variables or org secrets only
+
+---
+
+## 4. PR Checklist
 
 Before submitting any PR, verify:
 
-- [ ] No files deleted
-- [ ] No tests removed or simplified
-- [ ] No imports removed
-- [ ] Test count >= previous baseline
-- [ ] All existing functionality preserved
-- [ ] New code includes docstrings and type hints
-- [ ] Security invariants maintained
-- [ ] `pytest tests/ -v` passes
+- [ ] No files were deleted (unless explicitly requested by the repo owner)
+- [ ] No imports were removed just because they appear unused
+- [ ] No test cases were removed to make the suite pass
+- [ ] All new code includes inline documentation (comments explaining "why")
+- [ ] Test count is >= previous baseline (run `pytest tests/ -v`)
+- [ ] All existing features still work after changes
+- [ ] `docs/index.html` still renders correctly and the inner thoughts panel functions
+- [ ] Security invariants (Section 3) are maintained
+- [ ] New features include corresponding tests where applicable
 
-### 4. Code Quality Standards
+---
 
-- Python: Follow PEP 8, use type hints, write docstrings
-- HTML/JS: Use semantic HTML5, include ARIA labels, escape user input
-- CSS: Use CSS custom properties (variables), mobile-first responsive design
-- Tests: Use pytest, aim for > 80% coverage, never mock when integration tests are feasible
+## 5. Code Quality Standards
 
-### 5. Maintenance Task Guidelines
+- **Docstrings** on all public functions and classes
+- **Type hints** for function signatures (Python 3.10+ style)
+- **Error handling** — no bare `except:` clauses; catch specific exceptions
+- **Logging** over `print()` for runtime output
+- **UTF-8** encoding for all text files
 
-When performing maintenance tasks:
-1. **Read this file first** — understand the architecture before making changes
-2. **Check existing tests** — run `pytest tests/ -v` before AND after changes
-3. **Additive only** — enhance, don't replace
-4. **Document changes** — update README.md if adding new features
-5. **Security scan** — check for hardcoded secrets, SQL injection, XSS vulnerabilities
+---
 
-## File Structure
+## 6. Maintenance Tasks (Weekly)
 
-```
-Project_Janus/
-├── AGENTS.md              ← You are here
-├── README.md              ← Project documentation
-├── main.py                ← Entry point (harvest → clone → agent)
-├── run_agent.py           ← AI agent with tool-call loop
-├── requirements.txt       ← Python dependencies
-├── data/                  ← Runtime data (vault.db, chroma_db, site_mirror)
-├── docs/
-│   ├── index.html         ← GitHub Pages demo page
-│   └── latest_run.json    ← Auto-updated demo output
-├── scripts/
-│   └── run_demo.py        ← CI demo script (REST API)
-├── src/
-│   ├── harvester/
-│   │   ├── engine.py      ← Thread harvester
-│   │   └── site_cloner.py ← Full-site Markdown cloner
-│   ├── mcp_server/
-│   │   └── server.py      ← MCP tool server (read-only)
-│   └── vault/
-│       └── schema.sql     ← SQLite schema
-├── tests/                 ← Test suite
-└── .github/
-    ├── agents/
-    │   └── hats.agent.md  ← 11-Hat review agent
-    └── workflows/
-        ├── ci.yml         ← CI pipeline
-        ├── demo.yml       ← Weekly demo runner
-        └── maintenance.yml← Weekly maintenance
-```
+The automated maintenance workflow (`.github/workflows/maintenance.yml`) runs weekly and covers:
+
+1. **Security audit** — dependency vulnerability scanning
+2. **Dependency check** — report outdated packages (don't auto-update without review)
+3. **Test execution** — full `pytest` suite with coverage report
+4. **Documentation freshness** — verify README, AGENTS.md, and docs/ are current
+5. **Demo page validation** — check that `docs/index.html` loads and self-update checker works
+6. **Lint check** — code style consistency (ruff or equivalent)
+
+---
+
+## 7. 11-Hat Review Framework
+
+See `.github/agents/hats.agent.md` for the full adapted 11-Hat Aegis-Nexus review system. Key hats for Project Janus:
+
+| Hat | Focus |
+|---|---|
+| 🔴 Red (Emotion) | User experience of demo page, error messages |
+| ⚫ Black (Risk) | Security of MCP server, XSS in demo, vault integrity |
+| 🟢 Green (Innovation) | New archival features, enhanced search, better UI |
+| 🔵 Blue (Process) | CI/CD pipeline health, workflow correctness |
+| 🟡 Yellow (Benefit) | Value delivered by changes, user impact |
+| ⚪ White (Data) | Test coverage metrics, performance benchmarks |
