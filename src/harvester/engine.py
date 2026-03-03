@@ -2,7 +2,7 @@ import requests
 import hashlib
 import sqlite3
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 
@@ -40,7 +40,7 @@ class Harvester:
         if live_soup:
             self._parse_and_store(
                 live_soup, url, 'live',
-                datetime.utcnow().isoformat(timespec='seconds')
+                datetime.now(timezone.utc).isoformat(timespec='seconds')
             )
 
         # 2. Fetch Wayback (Temporal) Versions
@@ -79,10 +79,10 @@ class Harvester:
 
             snapshots = []
             oldest = data[1]  # Index 0 is header
-            # Parse CDX timestamp (YYYYMMDDHHmmss) into ISO-8601
-            ts_iso = datetime.strptime(oldest[0], '%Y%m%d%H%M%S').isoformat(
-                timespec='seconds'
-            )
+            # Parse CDX timestamp (YYYYMMDDHHmmss) into ISO-8601 UTC
+            ts_iso = datetime.strptime(oldest[0], '%Y%m%d%H%M%S').replace(
+                tzinfo=timezone.utc
+            ).isoformat(timespec='seconds')
             snapshots.append({
                 'timestamp': ts_iso,
                 'url': f"https://web.archive.org/web/{oldest[0]}/{oldest[1]}"

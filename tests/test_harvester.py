@@ -109,4 +109,4 @@ def test_get_wayback_urls_parses_cdx(db_file):
         snapshots = h._get_wayback_urls("https://example.com/page")
     assert len(snapshots) == 1
     assert "20150101120000" in snapshots[0]["url"]
-    assert snapshots[0]["timestamp"] == "2015-01-01T12:00:00"
+    assert snapshots[0]["timestamp"] == "2015-01-01T12:00:00+00:00"
