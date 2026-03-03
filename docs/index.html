@@ -1,540 +1,298 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Janus — Sovereign Archival System</title>
-  <style>
-    :root {
-      --bg:       #0d1117;
-      --bg2:      #161b22;
-      --border:   #30363d;
-      --text:     #e6edf3;
-      --muted:    #8b949e;
-      --accent:   #58a6ff;
-      --purple:   #bc8cff;
-      --green:    #3fb950;
-      --yellow:   #d29922;
-      --red:      #f85149;
-      --code-bg:  #1f2937;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      background: var(--bg); color: var(--text); line-height: 1.6;
-    }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    /* ── Header ── */
-    header {
-      background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 60%, #0d1117 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 64px 24px 44px;
-      text-align: center;
-    }
-    header h1 {
-      font-size: 3rem; font-weight: 700; margin-bottom: 14px;
-      background: linear-gradient(90deg, var(--accent) 0%, var(--purple) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    header p { font-size: 1.05rem; color: var(--muted); max-width: 580px; margin: 0 auto 28px; }
-    .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .badges img { height: 20px; }
-
-    /* ── Layout ── */
-    main { max-width: 980px; margin: 0 auto; padding: 44px 24px; }
-    section { margin-bottom: 52px; }
-    h2 {
-      font-size: 1.35rem; font-weight: 600; margin-bottom: 18px;
-      padding-bottom: 8px; border-bottom: 1px solid var(--border);
-    }
-    h3 {
-      font-size: .85rem; font-weight: 600; margin: 20px 0 8px;
-      color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
-    }
-
-    /* ── Architecture flow ── */
-    .flow {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: .9rem;
-    }
-    .flow .step {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 6px; padding: 6px 12px; white-space: nowrap;
-    }
-    .flow .arr { color: var(--muted); }
-
-    /* ── Component grid ── */
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
-    .card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 20px;
-    }
-    .card .icon { font-size: 1.8rem; margin-bottom: 10px; }
-    .card .name { font-weight: 600; color: var(--accent); margin-bottom: 6px; }
-    .card p { font-size: .86rem; color: var(--muted); }
-
-    /* ── Feature list ── */
-    .features {
-      list-style: none;
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;
-    }
-    .features li {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 6px; padding: 12px 16px;
-      font-size: .88rem; display: flex; gap: 10px;
-    }
-    .features li .ico { flex-shrink: 0; font-size: 1rem; }
-
-    /* ── Demo terminal ── */
-    .terminal { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .term-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; background: var(--code-bg); border-bottom: 1px solid var(--border);
-    }
-    .dots span {
-      display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px;
-    }
-    .dot-r { background: var(--red); }
-    .dot-y { background: var(--yellow); }
-    .dot-g { background: var(--green); }
-    .term-label { font-size: .8rem; color: var(--muted); font-family: monospace; }
-    .term-meta {
-      padding: 10px 16px; font-size: .78rem; color: var(--muted);
-      font-family: monospace; border-bottom: 1px solid var(--border);
-    }
-    .term-query {
-      padding: 10px 16px; font-size: .88rem; color: var(--purple);
-      font-family: monospace; border-bottom: 1px solid var(--border);
-    }
-    .term-query::before { content: "User › "; color: var(--muted); }
-    .term-body {
-      padding: 16px; font-size: .88rem; line-height: 1.75;
-      white-space: pre-wrap; font-family: monospace; min-height: 80px;
-    }
-    .term-body.loading { color: var(--muted); font-style: italic; }
-    .term-body.error   { color: var(--red); }
-    .term-foot {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 16px; border-top: 1px solid var(--border);
-    }
-    .term-foot .ts { font-size: .76rem; color: var(--muted); font-family: monospace; }
-
-    /* ── Buttons ── */
-    .btn {
-      display: inline-block; padding: 7px 14px; border-radius: 6px;
-      font-size: .83rem; font-weight: 500; border: 1px solid var(--border);
-      background: var(--bg2); color: var(--text); cursor: pointer;
-    }
-    .btn:hover { background: var(--border); text-decoration: none; }
-
-    /* ── Live controls ── */
-    .demo-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 16px; margin-top: 18px;
-    }
-    .panel {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px;
-    }
-    .panel h3 { margin-bottom: 10px; font-size: 1rem; }
-    .form-control { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-    .form-control label { font-size: .82rem; color: var(--muted); }
-    .form-control input,
-    .form-control textarea {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text); padding: 8px 10px;
-      font-size: .9rem; font-family: inherit;
-    }
-    .form-control textarea { min-height: 96px; resize: vertical; }
-    .status { font-size: .82rem; color: var(--muted); margin-top: 6px; }
-    .tool-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; }
-    .tool-card {
-      border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
-      background: var(--bg); font-size: .9rem;
-    }
-    .tool-card .name { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
-    .tool-card .args { font-size: .8rem; color: var(--muted); }
-
-    /* ── Code blocks ── */
-    code {
-      font-family: "SFMono-Regular", Consolas, monospace; font-size: .86em;
-      background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--purple);
-    }
-    pre {
-      background: var(--code-bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px; overflow-x: auto;
-      font-size: .84rem; line-height: 1.65; margin-top: 8px;
-    }
-    pre code { background: none; padding: 0; color: var(--text); }
-
-    /* ── Footer ── */
-    footer {
-      border-top: 1px solid var(--border); padding: 28px 24px;
-      text-align: center; color: var(--muted); font-size: .83rem;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Janus — Sovereign Archival System</title>
+<meta name="description" content="A sovereign, closed-loop archival system — crawl, clone, archive and query the web with a fully local AI brain. No external APIs. No censorship.">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Access-Control-Allow-Origin" content="*">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="janus-page-version" content="2026.03.03">
+<link rel="canonical" href="https://grumpified-oggvct.github.io/Project_Janus/">
+<style>
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--text:#c9d1d9;--muted:#8b949e;--accent:#58a6ff;--accent2:#1f6feb;--border:#30363d;--border2:#21262d;--green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#bc8cff}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:960px;margin:0 auto;padding:0 20px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--bg2)}
+nav .brand{font-weight:700;font-size:1.1rem;color:var(--text)}
+section{padding:40px 0;border-bottom:1px solid var(--border)}section:last-of-type{border-bottom:none}
+h2{font-size:1.5rem;margin-bottom:16px;color:var(--text)}h3{font-size:1.1rem;margin:18px 0 8px}
+p{margin-bottom:12px;color:var(--muted)}ul{margin-left:22px;margin-bottom:12px}li{margin-bottom:6px}
+footer{text-align:center;padding:24px;font-size:.85rem;color:var(--muted);border-top:1px solid var(--border)}
+table{border-collapse:collapse;width:100%;margin-bottom:16px}th,td{text-align:left;padding:8px 12px;border:1px solid var(--border);font-size:.9rem}th{background:var(--bg2);font-weight:600}
+.terminal{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.term-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);font-size:.8rem;color:var(--muted)}
+.term-bar::before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--green);margin-right:4px}
+.term-body{padding:14px 16px;background:var(--bg);font-family:"SFMono-Regular",Consolas,monospace;font-size:.85rem;white-space:pre-wrap;line-height:1.6;min-height:120px;max-height:400px;overflow-y:auto}
+.term-body.loading{color:var(--muted);font-style:italic}.term-body.error{color:var(--red)}
+.term-footer{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);font-size:.78rem}
+.btn{display:inline-block;padding:6px 14px;font-size:.84rem;background:var(--accent2);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn:hover{background:var(--border);text-decoration:none}
+.demo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:18px}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px}.panel h3{margin-bottom:10px;font-size:1rem}
+.form-control{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}.form-control label{font-size:.82rem;color:var(--muted)}
+.form-control input,.form-control textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:.9rem;font-family:inherit}
+.form-control textarea{min-height:96px;resize:vertical}.status{font-size:.82rem;color:var(--muted);margin-top:6px}
+.tool-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin:0;padding:0}
+.tool-card{border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:var(--bg);font-size:.9rem}
+.tool-card .name{font-weight:600;color:var(--accent);margin-bottom:4px}.tool-card .args{font-size:.8rem;color:var(--muted)}
+.inner-thoughts{margin-top:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none}
+.inner-thoughts summary{padding:10px 14px;background:var(--bg2);cursor:pointer;font-weight:600;font-size:.9rem;color:var(--purple);list-style:none;display:flex;align-items:center;gap:8px;transition:background .15s;user-select:none}
+.inner-thoughts summary::-webkit-details-marker{display:none}
+.inner-thoughts summary::before{content:'▶';font-size:.7rem;transition:transform .2s}
+.inner-thoughts[open] summary::before{transform:rotate(90deg)}
+.inner-thoughts summary:hover{background:var(--bg3)}.inner-thoughts[open] summary{border-bottom:1px solid var(--border)}
+.thought-step{padding:10px 14px;border-bottom:1px solid var(--border2);animation:fadeIn .3s ease-out}.thought-step:last-child{border-bottom:none}
+.step-label{display:inline-block;font-weight:600;color:var(--accent);margin-bottom:4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+.step-content{color:var(--muted);font-family:"SFMono-Regular",Consolas,monospace;font-size:.82rem;white-space:pre-wrap;line-height:1.5;max-height:200px;overflow-y:auto}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+code{font-family:"SFMono-Regular",Consolas,monospace;font-size:.86em;background:var(--bg2);padding:2px 6px;border-radius:4px}
+pre{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;font-size:.85rem;line-height:1.5;margin-bottom:16px}pre code{background:none;padding:0}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 20px}.badges img{height:22px}
+.update-banner{display:none;padding:10px 16px;background:linear-gradient(90deg,var(--accent2),#1a3056);border:1px solid var(--accent);border-radius:8px;font-size:.85rem;margin-bottom:16px;animation:fadeIn .4s ease-out}
+.update-banner a{color:#fff;font-weight:600;text-decoration:underline}
+.update-banner .dismiss{float:right;cursor:pointer;color:var(--muted);font-size:.9rem;background:none;border:none;padding:0 4px}
+@media(max-width:640px){.demo-grid{grid-template-columns:1fr}nav{flex-direction:column;gap:8px}.term-body{font-size:.78rem}}
+</style>
 </head>
 <body>
+<nav><span class="brand">⚖ Project Janus</span><a href="https://github.com/Grumpified-OGGVCT/Project_Janus" aria-label="View on GitHub">GitHub</a></nav>
+<main class="container">
+<section aria-label="Introduction">
+<h2>⚖ Project Janus</h2>
+<p style="font-size:1.05rem;color:var(--text);">A sovereign, closed-loop archival system — crawl, clone, archive and query the web with a fully local AI brain. No external APIs. No censorship.</p>
+<div class="badges">
+<a href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/ci.yml"><img src="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+<a href="https://grumpified-oggvct.github.io/Project_Janus/"><img src="https://img.shields.io/badge/demo-GitHub_Pages-blue" alt="Demo page"></a>
+<a href="https://github.com/Grumpified-OGGVCT/Project_Janus/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Grumpified-OGGVCT/Project_Janus" alt="License"></a>
+</div>
+</section>
 
-<header>
-  <h1>⚖ Project Janus</h1>
-  <p>A sovereign, closed-loop archival system — crawl, clone, archive and query the web with a fully local AI brain. No external APIs. No censorship.</p>
-  <div class="badges">
-    <a href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/ci.yml">
-      <img src="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/ci.yml/badge.svg" alt="CI">
-    </a>
-    <a href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/demo.yml">
-      <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo">
-    </a>
-    <a href="https://github.com/Grumpified-OGGVCT/Project_Janus">
-      <img src="https://img.shields.io/badge/GitHub-source-24292e?logo=github" alt="GitHub">
-    </a>
-  </div>
-</header>
+<section aria-label="Architecture">
+<h2>Architecture</h2>
+<pre><code>User Prompt
+    ↓
+Mistral Large 3 (Ollama — 256K ctx, native function-calling)
+    ↓ tool call          ↑ raw data
+MCP Server (read-only librarian)
+    ↓ queries
+SQLite Vault + ChromaDB (vector index)
+    ↑ populated by
+Harvester  /  Site Cloner (field agents)</code></pre>
+<table><thead><tr><th>Component</th><th>File</th><th>Role</th></tr></thead><tbody>
+<tr><td>Brain</td><td><code>run_agent.py</code></td><td>Mistral Large 3 via Ollama; drives tool-call loop</td></tr>
+<tr><td>Librarian</td><td><code>src/mcp_server/server.py</code></td><td>MCP tools: <code>search_archives</code>, <code>view_thread_history</code></td></tr>
+<tr><td>Thread Harvester</td><td><code>src/harvester/engine.py</code></td><td>Per-thread crawl + Wayback CDX snapshots → vault.db</td></tr>
+<tr><td>Site Cloner</td><td><code>src/harvester/site_cloner.py</code></td><td>Full-domain Markdown mirror with rewritten links</td></tr>
+<tr><td>Vault</td><td><code>src/vault/schema.sql</code></td><td>SQLite schema with temporal versioning</td></tr>
+</tbody></table>
+<p>Exposes <code>search_archives</code> and <code>view_thread_history</code>. Always opens the vault in read-only mode. Local embeddings via <code>all-MiniLM-L6-v2</code>.</p>
+<p>Per-thread crawl with Wayback CDX temporal snapshots. SHA-256 content hashing for deduplication and integrity.</p>
+<p>Mirrors an entire domain as navigable <code>.md</code> files. Internal links rewritten to relative paths. Generates a <code>_index.md</code> navigation tree.</p>
+</section>
 
-<main>
+<section aria-label="Features">
+<h2>Features</h2>
+<ul>
+<li>🌐 <strong>Full-site Markdown clone</strong> — every page saved as a linked <code>.md</code> file, navigable in GitHub / Obsidian / VS Code</li>
+<li>⏳ <strong>Temporal versioning</strong> — <code>live</code>, <code>wayback_oldest</code>, and <code>wayback_recent</code> captures side-by-side</li>
+<li>🔒 <strong>Immutable vault</strong> — SHA-256 content hashes; MCP server is permanently read-only</li>
+<li>🧲 <strong>Semantic search</strong> — sentence-transformers + ChromaDB, entirely local</li>
+<li>🤖 <strong>100% local AI</strong> — no OpenAI / Anthropic; all inference via Ollama</li>
+<li>🔗 <strong>Native tool-calling</strong> — Mistral Large 3's function-calling drives the MCP tool loop</li>
+<li>✅ <strong>CI-tested</strong> — unit tests run on every push via GitHub Actions</li>
+<li>📡 <strong>Org-secret demo</strong> — weekly auto-demo via <code>OLLAMA_HOST</code> org secret</li>
+<li>🧠 <strong>Inner Thoughts</strong> — collapsible reasoning trace shows model chain-of-thought and tool decisions</li>
+<li>🔄 <strong>Self-updating</strong> — auto-checks for latest version against main branch via GitHub API</li>
+</ul>
+</section>
 
-  <!-- Architecture -->
-  <section id="architecture">
-    <h2>Architecture</h2>
-    <div class="flow">
-      <span class="step">👤 User Prompt</span>
-      <span class="arr">→</span>
-      <span class="step">🧠 Mistral Large 3 (Ollama)</span>
-      <span class="arr">→</span>
-      <span class="step">📚 MCP Server (Librarian)</span>
-      <span class="arr">→</span>
-      <span class="step">🗄 SQLite + ChromaDB Vault</span>
-    </div>
-    <div class="grid">
-      <div class="card">
-        <div class="icon">🧠</div>
-        <div class="name">Brain — Mistral Large 3</div>
-        <p>Runs via Ollama (256K context, native function-calling). Decides which tool to invoke, synthesises raw archive data into neutral answers.</p>
-      </div>
-      <div class="card">
-        <div class="icon">📚</div>
-        <div class="name">Librarian — MCP Server</div>
-        <p>Exposes <code>search_archives</code> and <code>view_thread_history</code>. Always opens the vault in <strong>read-only</strong> mode. Local embeddings via <code>all-MiniLM-L6-v2</code>.</p>
-      </div>
-      <div class="card">
-        <div class="icon">🕷</div>
-        <div class="name">Field Agent — Harvester</div>
-        <p>Per-thread crawl with Wayback CDX temporal snapshots. SHA-256 content hashing for deduplication and integrity.</p>
-      </div>
-      <div class="card">
-        <div class="icon">🗺</div>
-        <div class="name">Site Cloner</div>
-        <p>Mirrors an entire domain as navigable <code>.md</code> files. Internal links rewritten to relative paths. Generates a <code>_index.md</code> navigation tree.</p>
-      </div>
-    </div>
-  </section>
+<section aria-label="Live Demo">
+<h2>Live Demo</h2>
+<p>Output below is generated by the <a href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/demo.yml">Demo workflow</a> using <strong>Mistral Large 3</strong> via the organisation's Ollama cloud endpoint. Browser calls require the Ollama host to allow CORS; this page limits to 3 calls per day per browser session (add <code>?owner=1</code> to bypass if you're the repo owner).</p>
+<div class="terminal">
+<div class="term-bar" role="status"><span id="demo-meta">Loading demo output…</span></div>
+<div class="term-body loading" id="demo-body" aria-live="polite">Fetching latest_run.json…</div>
+<div class="term-body" id="demo-query" style="border-top:1px solid var(--border);color:var(--muted);min-height:auto;max-height:none;"></div>
+<div class="term-footer"><span id="demo-ts"></span><div style="display:flex;gap:8px;">
+<a class="btn" href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/demo.yml" aria-label="Trigger a new demo run">▶ Trigger new run</a>
+<a class="btn" href="latest_run.json" target="_blank" aria-label="View raw JSON output">Raw JSON</a>
+</div></div>
+</div>
 
-  <!-- Features -->
-  <section id="features">
-    <h2>Features</h2>
-    <ul class="features">
-      <li><span class="ico">🌐</span>Full-site Markdown clone — every page saved as a linked <code>.md</code> file, navigable in GitHub / Obsidian / VS Code</li>
-      <li><span class="ico">⏳</span>Temporal versioning — <code>live</code>, <code>wayback_oldest</code>, and <code>wayback_recent</code> captures side-by-side</li>
-      <li><span class="ico">🔒</span>Immutable vault — SHA-256 content hashes; MCP server is permanently read-only</li>
-      <li><span class="ico">🧲</span>Semantic search — sentence-transformers + ChromaDB, entirely local</li>
-      <li><span class="ico">🤖</span>100% local AI — no OpenAI / Anthropic; all inference via Ollama</li>
-      <li><span class="ico">🔗</span>Native tool-calling — Mistral Large 3's function-calling drives the MCP tool loop</li>
-      <li><span class="ico">✅</span>CI-tested — unit tests run on every push via GitHub Actions</li>
-      <li><span class="ico">📡</span>Org-secret demo — weekly auto-demo via <code>OLLAMA_HOST</code> org secret</li>
-    </ul>
-  </section>
+<div class="demo-grid">
+<div class="panel">
+<h3>Try your own Ollama host</h3>
+<p style="color:var(--muted);font-size:.85rem;margin-bottom:10px;">Paste a reachable Ollama URL and run the same demo prompt live. We call <code>/api/chat</code> directly from this page using the REST API.</p>
+<form id="live-form" aria-label="Live Ollama demo form">
+<div class="form-control"><label for="live-host">Ollama Host URL</label><input id="live-host" name="host" type="url" placeholder="https://ollama.example.com" required aria-required="true"></div>
+<div class="form-control"><label for="live-api-key">API Key (optional)</label><input id="live-api-key" name="api" type="password" placeholder="Bearer token if required" autocomplete="off"></div>
+<div class="form-control"><label for="live-prompt">Prompt</label><textarea id="live-prompt" name="prompt" aria-label="Enter your prompt">Describe Project Janus: what it archives, how the Harvester collects data, how the MCP Server exposes it as tools, and how Mistral Large 3 reasons over the results to produce neutral, unfiltered answers.</textarea></div>
+<button class="btn" type="submit" id="live-submit">▶ Run live call</button>
+<div class="status" id="live-status" role="status" aria-live="polite">Waiting for input.</div>
+</form>
+<div class="term-body loading" id="live-body" style="margin-top:10px;" aria-live="polite">Response will appear here.</div>
+<details class="inner-thoughts" id="inner-thoughts" aria-label="Model reasoning trace">
+<summary>🧠 Inner Thoughts <span class="thought-count" id="thought-count"></span></summary>
+<div id="thought-steps"></div>
+</details>
+</div>
+<div class="panel">
+<h3>MCP tools available</h3>
+<ul class="tool-list" id="tools-list" aria-label="Available MCP tools"></ul>
+<div class="status">Source: <code>src/mcp_server/server.py</code></div>
+</div>
+</div>
+</section>
 
-  <!-- Live Demo -->
-  <section id="demo">
-    <h2>Live Demo</h2>
-    <p style="color:var(--muted);font-size:.88rem;margin-bottom:16px;">
-      Output below is generated by the
-      <a href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/demo.yml">Demo workflow</a>
-      using <strong>Mistral Large 3</strong> via the organisation's Ollama cloud endpoint.
-      Browser calls require the Ollama host to allow CORS; this page limits to 3 calls per day per browser session
-      (add <code>?owner=1</code> to bypass if you're the repo owner).
-      Internals/\"inner thoughts\" are not exposed by the Ollama REST API, so only final tool decisions and responses are shown.
-    </p>
-    <div class="terminal">
-      <div class="term-bar">
-        <div class="dots">
-          <span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span>
-        </div>
-        <span class="term-label" id="demo-model">mistral-large-3:675b-cloud</span>
-        <a class="btn" href="https://github.com/Grumpified-OGGVCT/Project_Janus/actions/workflows/demo.yml" target="_blank">▶ Trigger new run</a>
-      </div>
-      <div class="term-meta" id="demo-meta">Loading…</div>
-      <div class="term-query" id="demo-query"></div>
-      <div class="term-body loading" id="demo-body">Fetching latest demo output…</div>
-      <div class="term-foot">
-        <span class="ts" id="demo-ts"></span>
-        <a class="btn" href="latest_run.json" target="_blank">Raw JSON</a>
-      </div>
-    </div>
-
-    <div class="demo-grid">
-      <div class="panel">
-        <h3>Try your own Ollama host</h3>
-        <p style="color:var(--muted);font-size:.85rem;margin-bottom:10px;">
-          Paste a reachable Ollama URL and run the same demo prompt live. We call <code>/api/chat</code> directly
-          from this page using the REST API.
-        </p>
-        <form id="live-form">
-          <div class="form-control">
-            <label for="live-host">Ollama Host URL</label>
-            <input id="live-host" name="host" type="url" placeholder="https://ollama.example.com" required>
-          </div>
-          <div class="form-control">
-            <label for="live-api-key">API Key (optional)</label>
-            <input id="live-api-key" name="api" type="password" placeholder="Bearer token if required">
-          </div>
-          <div class="form-control">
-            <label for="live-prompt">Prompt</label>
-            <textarea id="live-prompt" name="prompt">Describe Project Janus: what it archives, how the Harvester collects data, how the MCP Server exposes it as tools, and how Mistral Large 3 reasons over the results to produce neutral, unfiltered answers.</textarea>
-          </div>
-          <button class="btn" type="submit">▶ Run live call</button>
-          <div class="status" id="live-status">Waiting for input.</div>
-        </form>
-        <div class="term-body loading" id="live-body" style="margin-top:10px;">Response will appear here.</div>
-      </div>
-
-      <div class="panel">
-        <h3>MCP tools available</h3>
-        <ul class="tool-list" id="tools-list"></ul>
-        <div class="status">Source: <code>src/mcp_server/server.py</code></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Quick Start -->
-  <section id="quickstart">
-    <h2>Quick Start</h2>
-    <h3>1 — Install</h3>
-    <pre><code>git clone https://github.com/Grumpified-OGGVCT/Project_Janus.git
+<section aria-label="Quick Start">
+<h2>Quick Start</h2>
+<h3>1 — Install</h3>
+<pre><code>git clone https://github.com/Grumpified-OGGVCT/Project_Janus.git
 cd Project_Janus
 pip install -r requirements.txt</code></pre>
-
-    <h3>2 — Configure targets in main.py</h3>
-    <pre><code># Per-thread harvest (adds posts to vault.db):
+<h3>2 — Configure targets in main.py</h3>
+<pre><code># Per-thread harvest (adds posts to vault.db):
 TARGET_URLS = ["https://your-site.net/threads/example.123/"]
-
 # Full-site Markdown clone (mirrors entire domain):
-TARGET_SITE  = "https://your-site.net/"
+TARGET_SITE = "https://your-site.net/"
 CLONE_MAX_PAGES = 1000</code></pre>
-
-    <h3>3 — Run</h3>
-    <pre><code># Harvest → clone → launch AI agent:
+<h3>3 — Run</h3>
+<pre><code># Harvest → clone → launch AI agent:
 python main.py
-
 # Agent only (no harvest):
 python run_agent.py</code></pre>
-
-    <h3>4 — Site clone output layout</h3>
-    <pre><code>data/site_mirror/your-site.net/
-  _index.md          ← navigation tree (every page linked)
-  index.md           ← home page
+<h3>4 — Site clone output layout</h3>
+<pre><code>data/site_mirror/your-site.net/
+  _index.md               ← navigation tree (every page linked)
+  index.md                ← home page
   threads/
     some-thread.md
     another-thread.md
   forums/
     general.md</code></pre>
-
-    <h3>5 — Enable this demo page (once)</h3>
-    <pre><code>GitHub Repo → Settings → Pages
-  Source: Deploy from branch → main → /docs → Save</code></pre>
-  </section>
-
+<h3>5 — Enable this demo page (once)</h3>
+<pre><code>GitHub Repo → Settings → Pages
+Source: Deploy from branch → main → /docs → Save</code></pre>
+</section>
 </main>
 
+<div class="container"><div class="update-banner" id="update-banner" role="alert">
+<button class="dismiss" onclick="this.parentElement.style.display='none'" aria-label="Dismiss">✕</button>
+🔄 A newer version of this page is available on <a href="https://grumpified-oggvct.github.io/Project_Janus/" id="update-link">main branch</a>.
+<span id="update-details"></span>
+</div></div>
+
 <footer>
-  Project Janus &nbsp;·&nbsp;
-  <a href="https://github.com/Grumpified-OGGVCT/Project_Janus">GitHub</a> &nbsp;·&nbsp;
-  Mistral Large 3 + Ollama &nbsp;·&nbsp; No external APIs
+<span id="page-version" style="font-size:.75rem;color:var(--border);"></span>
+<a href="https://github.com/Grumpified-OGGVCT/Project_Janus">GitHub</a>
+· <a href="https://grumpified-oggvct.github.io/Project_Janus/" title="Canonical demo page">Live Demo</a>
+· <button onclick="checkForUpdates()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:.85rem;" aria-label="Check for updates">🔄 Check for updates</button>
 </footer>
 
 <script>
-  const DEMO_PROMPT = "Describe Project Janus: what it archives, how the Harvester collects data, how the MCP Server exposes it as tools, and how Mistral Large 3 reasons over the results to produce neutral, unfiltered answers.";
-  const QUOTA_LIMIT = 3;
-  const QUOTA_KEY = "janus_demo_quota";
-  const OWNER_FLAG = "owner";
+const DEMO_PROMPT="Describe Project Janus: what it archives, how the Harvester collects data, how the MCP Server exposes it as tools, and how Mistral Large 3 reasons over the results to produce neutral, unfiltered answers.";
+const SYSTEM_PROMPT="You are a neutral technical assistant for Project Janus, a sovereign archival system. Describe the architecture clearly and concisely. Structure your response with clear reasoning steps. When you consider which tools to use, explain your reasoning.";
+const QUOTA_LIMIT=3;const QUOTA_KEY="janus_demo_quota";const OWNER_FLAG="owner";
 
-  fetch('latest_run.json?_=' + Date.now())
-    .then(r => r.json())
-    .then(d => {
-      document.getElementById('demo-model').textContent = d.model || 'unknown';
-      const ts = d.timestamp ? new Date(d.timestamp).toLocaleString() : '—';
-      document.getElementById('demo-meta').textContent =
-        'host: ' + (d.ollama_host || '—') + '   |   run: ' + ts;
-      document.getElementById('demo-query').textContent = d.query || '';
-      document.getElementById('demo-ts').textContent = 'Generated: ' + ts;
-      const liveHost = document.getElementById('live-host');
-      if (liveHost && d.ollama_host) {
-        liveHost.value = d.ollama_host;
-      }
+function escapeHtml(s){const d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML}
 
-      const body = document.getElementById('demo-body');
-      body.classList.remove('loading');
-      if (d.error) {
-        body.classList.add('error');
-        body.textContent = 'Error: ' + d.error;
-      } else if (d.response) {
-        body.textContent = d.response;
-      } else {
-        body.classList.add('loading');
-        body.textContent = 'No response yet — trigger the Live Demo workflow above.';
-      }
-    })
-    .catch(err => {
-      document.getElementById('demo-meta').textContent = 'Could not load demo output.';
-      const body = document.getElementById('demo-body');
-      body.classList.remove('loading');
-      body.classList.add('error');
-      body.textContent =
-        'Failed to fetch latest_run.json: ' + err.message +
-        '\n\n(If viewing via file://, this will always fail due to CORS — ' +
-        'view via GitHub Pages instead.)';
-    });
+fetch('latest_run.json?_='+Date.now()).then(r=>r.json()).then(d=>{
+const ts=d.timestamp||'unknown';
+document.getElementById('demo-meta').textContent='host: '+(d.ollama_host||'—')+'   |   run: '+ts;
+document.getElementById('demo-query').textContent=d.query||'';
+document.getElementById('demo-ts').textContent='Generated: '+ts;
+const lh=document.getElementById('live-host');if(lh&&d.ollama_host)lh.value=d.ollama_host;
+const body=document.getElementById('demo-body');body.classList.remove('loading');
+if(d.error){body.classList.add('error');body.textContent='Error: '+d.error}
+else{body.textContent=d.response||'(no response)'}
+}).catch(()=>{
+const body=document.getElementById('demo-body');body.classList.remove('loading');body.classList.add('error');
+body.textContent='Could not load latest_run.json.\nTrigger a new demo run from the Actions tab, or run scripts/run_demo.py locally.\n\n(If viewing via file://, this will always fail due to CORS — view via GitHub Pages instead.)';
+});
 
-  // Render available MCP tools directly from the server definitions.
-  const toolsList = document.getElementById('tools-list');
-  if (toolsList) {
-    const tools = [
-      {
-        name: 'search_archives',
-        description: 'Semantic search across the local historical archives.',
-        args: ['query']
-      },
-      {
-        name: 'view_thread_history',
-        description: 'Reconstruct how a thread changed across live/Wayback snapshots.',
-        args: ['url']
-      }
-    ];
-    toolsList.innerHTML = tools.map(t => (
-      `<li class="tool-card">` +
-        `<div class="name">${t.name}</div>` +
-        `<div>${t.description}</div>` +
-        `<div class="args">Input: ${t.args.join(', ')}</div>` +
-      `</li>`
-    )).join('');
-  }
+const toolsList=document.getElementById('tools-list');
+if(toolsList){
+const tools=[{name:'search_archives',description:'Semantic search across the local historical archives.',args:['query']},{name:'view_thread_history',description:'Reconstruct how a thread changed across live/Wayback snapshots.',args:['url']}];
+toolsList.innerHTML=tools.map(t=>'<li class="tool-card"><div class="name">'+escapeHtml(t.name)+'</div><div>'+escapeHtml(t.description)+'</div><div class="args">Input: '+escapeHtml(t.args.join(', '))+'</div></li>').join('');
+}
 
-  // Lightweight in-browser call to the Ollama REST API for live testing.
-  const liveForm = document.getElementById('live-form');
-  const liveBody = document.getElementById('live-body');
-  const liveStatus = document.getElementById('live-status');
-  const searchParams = new URLSearchParams(window.location.search);
-  if (searchParams.get(OWNER_FLAG) === "1") {
-    localStorage.setItem("janus_owner", "1");
-  }
+const searchParams=new URLSearchParams(window.location.search);
+if(searchParams.get(OWNER_FLAG)==="1")localStorage.setItem("janus_owner","1");
+function isOwner(){return searchParams.get(OWNER_FLAG)==="1"||localStorage.getItem("janus_owner")==="1"}
+function getQuota(){const s=localStorage.getItem(QUOTA_KEY);if(!s)return{date:null,count:0};try{const p=JSON.parse(s);return{date:p.date,count:p.count||0}}catch{return{date:null,count:0}}}
+function setQuota(r){localStorage.setItem(QUOTA_KEY,JSON.stringify(r))}
+function enforceQuota(){if(isOwner())return{ok:true,count:0};const today=new Date().toISOString().slice(0,10);const q=getQuota();if(q.date!==today){setQuota({date:today,count:0});return{ok:true,count:0}}if(q.count>=QUOTA_LIMIT)return{ok:false,count:q.count};const n={date:today,count:q.count+1};setQuota(n);return{ok:true,count:n.count}}
 
-  function isOwner() {
-    return searchParams.get(OWNER_FLAG) === "1" || localStorage.getItem("janus_owner") === "1";
-  }
+function parseInnerThoughts(data,sysPr,usrPr){
+const thoughts=[];const content=data?.message?.content||'';
+thoughts.push({label:'📋 System Instruction',content:sysPr});
+thoughts.push({label:'💬 User Query',content:usrPr});
+let clean=content;
+const tm=content.match(/<think>([\s\S]*?)<\/think>/);
+if(tm){thoughts.push({label:'🧠 Model Reasoning (Chain-of-Thought)',content:tm[1].trim()});clean=content.replace(/<think>[\s\S]*?<\/think>/,'').trim()}
+if(data?.message?.tool_calls&&data.message.tool_calls.length>0){
+const ti=data.message.tool_calls.map(tc=>'Tool: '+(tc.function?.name||'unknown')+'\nArgs: '+JSON.stringify(tc.function?.arguments||{},null,2)).join('\n---\n');
+thoughts.push({label:'🔧 Tool Invocations',content:ti})}
+const rm=clean.match(/(?:^|\n)(?:Reasoning|Analysis|Approach|Step \d+)[:\-—]\s*(.+?)(?=\n(?:Reasoning|Analysis|Approach|Step \d+|$))/gs);
+if(rm&&rm.length>0)thoughts.push({label:'🔍 Structured Reasoning',content:rm.join('\n').trim()});
+const ctx=[];
+if(data?.model)ctx.push('Model: '+data.model);
+if(data?.eval_count)ctx.push('Eval tokens: '+data.eval_count);
+if(data?.prompt_eval_count)ctx.push('Prompt tokens: '+data.prompt_eval_count);
+if(data?.total_duration)ctx.push('Total time: '+(data.total_duration/1e9).toFixed(2)+'s');
+if(data?.eval_duration)ctx.push('Eval time: '+(data.eval_duration/1e9).toFixed(2)+'s');
+if(ctx.length>0)thoughts.push({label:'⚙️ Execution Context',content:ctx.join('\n')});
+return{thoughts,cleanContent:clean}}
 
-  function getQuota() {
-    const stored = localStorage.getItem(QUOTA_KEY);
-    if (!stored) return {date: null, count: 0};
-    try {
-      const parsed = JSON.parse(stored);
-      return {date: parsed.date, count: parsed.count || 0};
-    } catch {
-      return {date: null, count: 0};
-    }
-  }
+function renderInnerThoughts(thoughts){
+const c=document.getElementById('thought-steps');const d=document.getElementById('inner-thoughts');const n=document.getElementById('thought-count');
+if(!c||!d)return;
+c.innerHTML=thoughts.map(t=>'<div class="thought-step"><div class="step-label">'+escapeHtml(t.label)+'</div><div class="step-content">'+escapeHtml(t.content)+'</div></div>').join('');
+if(n)n.textContent='('+thoughts.length+' steps)';d.style.display='block'}
 
-  function setQuota(record) {
-    localStorage.setItem(QUOTA_KEY, JSON.stringify(record));
-  }
+const liveForm=document.getElementById('live-form');const liveBody=document.getElementById('live-body');const liveStatus=document.getElementById('live-status');
+async function runLiveDemo(e){
+e.preventDefault();if(!liveBody||!liveStatus)return;
+const quota=enforceQuota();
+if(!quota.ok){liveStatus.textContent='Daily limit reached ('+QUOTA_LIMIT+' calls). Owner can bypass with ?owner=1.';liveBody.classList.remove('loading');liveBody.classList.add('error');liveBody.textContent='Quota exceeded for today.';return}
+const host=(document.getElementById('live-host')?.value||'').trim();
+const apiKey=(document.getElementById('live-api-key')?.value||'').trim();
+const prompt=(document.getElementById('live-prompt')?.value||'').trim()||DEMO_PROMPT;
+if(!host){liveStatus.textContent='Enter a reachable Ollama host URL.';return}
+const url=host.replace(/\/+$/,'')+'/api/chat';const headers={'Content-Type':'application/json'};
+if(apiKey)headers['Authorization']='Bearer '+apiKey;
+const payload={model:'mistral-large-3:675b-cloud',messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:prompt}],stream:false};
+liveStatus.textContent='Calling '+url+' …';liveBody.classList.remove('error');liveBody.classList.add('loading');liveBody.textContent='Waiting for response…';
+document.getElementById('inner-thoughts').style.display='none';
+try{const resp=await fetch(url,{method:'POST',headers,body:JSON.stringify(payload)});
+if(!resp.ok)throw new Error('HTTP '+resp.status+' '+resp.statusText);
+const data=await resp.json();const{thoughts,cleanContent}=parseInnerThoughts(data,SYSTEM_PROMPT,prompt);
+liveBody.classList.remove('loading');liveBody.textContent=cleanContent||'No response content returned.';
+liveStatus.textContent='Success — model: '+(data?.model||payload.model);renderInnerThoughts(thoughts);
+}catch(err){liveBody.classList.remove('loading');liveBody.classList.add('error');liveBody.textContent='Error: '+err.message;liveStatus.textContent='Request failed. Check host URL, API key, or CORS settings.'}}
+if(liveForm)liveForm.addEventListener('submit',runLiveDemo);
 
-  function enforceQuota() {
-    if (isOwner()) return {ok: true, count: 0};
-    const today = new Date().toISOString().slice(0, 10);
-    const q = getQuota();
-    if (q.date !== today) {
-      setQuota({date: today, count: 0});
-      return {ok: true, count: 0};
-    }
-    if (q.count >= QUOTA_LIMIT) {
-      return {ok: false, count: q.count};
-    }
-    const next = {date: today, count: q.count + 1};
-    setQuota(next);
-    return {ok: true, count: next.count};
-  }
-
-  async function runLiveDemo(event) {
-    event.preventDefault();
-    if (!liveBody || !liveStatus) {
-      return;
-    }
-    const quota = enforceQuota();
-    if (!quota.ok) {
-      liveStatus.textContent = `Daily limit reached (${QUOTA_LIMIT} calls). Owner can bypass with ?owner=1.`;
-      liveBody.classList.remove('loading');
-      liveBody.classList.add('error');
-      liveBody.textContent = 'Quota exceeded for today.';
-      return;
-    }
-    const hostEl = document.getElementById('live-host');
-    const apiEl = document.getElementById('live-api-key');
-    const promptEl = document.getElementById('live-prompt');
-    const host = (hostEl?.value || '').trim();
-    const prompt = (promptEl?.value || '').trim() || DEMO_PROMPT;
-
-    if (!host) {
-      liveStatus.textContent = 'Enter a reachable Ollama host URL.';
-      return;
-    }
-
-    const url = host.replace(/\/+$/, '') + '/api/chat';
-    const headers = {'Content-Type': 'application/json'};
-    const apiKey = (apiEl?.value || '').trim();
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
-
-    const payload = {
-      model: 'mistral-large-3:675b-cloud',
-      messages: [
-        {role: 'system', content: 'You are a neutral technical assistant for Project Janus, a sovereign archival system. Describe the architecture clearly and concisely.'},
-        {role: 'user', content: prompt}
-      ],
-      stream: false
-    };
-
-    liveStatus.textContent = `Calling ${url} …`;
-    liveBody.classList.remove('error');
-    liveBody.classList.add('loading');
-    liveBody.textContent = 'Waiting for response…';
-
-    try {
-      const resp = await fetch(url, {method: 'POST', headers, body: JSON.stringify(payload)});
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-      }
-      const data = await resp.json();
-      const content = data?.message?.content || 'No response content returned.';
-      liveBody.classList.remove('loading');
-      liveBody.textContent = content;
-      liveStatus.textContent = `Success — model: ${data?.model || payload.model}`;
-    } catch (err) {
-      liveBody.classList.remove('loading');
-      liveBody.classList.add('error');
-      liveBody.textContent = 'Error: ' + err.message;
-      liveStatus.textContent = 'Request failed. Check host URL, API key, or CORS settings.';
-    }
-  }
-
-  if (liveForm) {
-    liveForm.addEventListener('submit', runLiveDemo);
-  }
+/* Self-update checker */
+const PAGE_VERSION=document.querySelector('meta[name="janus-page-version"]')?.content||'unknown';
+const REPO_API='https://api.github.com/repos/Grumpified-OGGVCT/Project_Janus';
+const vEl=document.getElementById('page-version');if(vEl)vEl.textContent='v'+PAGE_VERSION+' ';
+async function checkForUpdates(){
+const banner=document.getElementById('update-banner');const details=document.getElementById('update-details');
+if(!banner)return;
+try{const resp=await fetch(REPO_API+'/commits?path=docs/index.html&per_page=1&sha=main',{headers:{'Accept':'application/vnd.github.v3+json'}});
+if(!resp.ok)throw new Error('GitHub API: '+resp.status);
+const commits=await resp.json();if(commits.length===0)return;
+const latestDate=commits[0].commit.committer.date.slice(0,10).replace(/-/g,'.');
+const latestSha=commits[0].sha.slice(0,7);const latestMsg=commits[0].commit.message.split('\n')[0];
+if(latestDate>PAGE_VERSION){if(details)details.textContent=' (commit '+latestSha+': '+latestMsg+')';banner.style.display='block'}
+else{banner.style.display='block';banner.innerHTML='✅ This page is up to date (v'+PAGE_VERSION+', latest: '+latestDate+')';setTimeout(()=>{banner.style.display='none'},5000)}
+}catch(err){console.warn('Update check failed:',err.message)}}
+setTimeout(checkForUpdates,2000);
 </script>
-
 </body>
 </html>
