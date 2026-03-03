@@ -4,6 +4,28 @@ import ollama
 # Configuration
 MISTRAL_MODEL = "mistral-large-3:675b-cloud"  # Cloud-tagged Mistral Large 3 via Ollama
 
+# Model options — maximised for the 256 K-context cloud model.
+# num_ctx       : full 256 K context window (262 144 tokens)
+# num_predict   : -1 = no output-token cap; model decides when to stop
+# temperature   : 0.7  — creative enough for synthesis, precise for research
+# top_p         : 0.95 — nucleus sampling; keeps high-probability tokens in play
+# top_k         : 60   — wider candidate pool than the default of 40
+# repeat_penalty: 1.05 — light penalty; avoids loops without hurting repetition
+# mirostat      : 2    — adaptive sampler targeting a stable perplexity
+# mirostat_tau  : 5.0  — target entropy; higher = more diverse output
+# mirostat_eta  : 0.1  — learning rate for the mirostat algorithm
+MODEL_OPTIONS = {
+    "num_ctx": 262144,
+    "num_predict": -1,
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 60,
+    "repeat_penalty": 1.05,
+    "mirostat": 2,
+    "mirostat_tau": 5.0,
+    "mirostat_eta": 0.1,
+}
+
 
 def run_mcp_tool(tool_name: str, arguments: dict) -> str:
     """
@@ -88,6 +110,7 @@ def main():
             model=MISTRAL_MODEL,
             messages=messages,
             tools=tools_schema,
+            options=MODEL_OPTIONS,
         )
 
         response_message = response.get('message', {})
@@ -115,6 +138,7 @@ def main():
             final_response = ollama.chat(
                 model=MISTRAL_MODEL,
                 messages=messages,
+                options=MODEL_OPTIONS,
             )
             answer = final_response['message']['content']
             print(f"\nHistorian: {answer}\n")
