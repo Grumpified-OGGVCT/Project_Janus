@@ -1,0 +1,6 @@
+mcp[cli]
+ollama
+chromadb
+sentence-transformers
+requests
+beautifulsoup4
