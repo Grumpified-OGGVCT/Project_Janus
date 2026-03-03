@@ -62,12 +62,14 @@ class Harvester:
     def _get_wayback_urls(self, url):
         """Query CDX API for oldest snapshot."""
         cdx_url = (
-            f"http://web.archive.org/cdx/search/cdx"
+            f"https://web.archive.org/cdx/search/cdx"
             f"?url={url}&output=json&fl=timestamp,original"
             f"&filter=statuscode:200"
         )
         try:
-            resp = self.session.get(cdx_url)
+            resp = self.session.get(cdx_url, timeout=30)
+            if resp.status_code != 200:
+                return []
             data = resp.json()
             if len(data) <= 1:
                 return []
