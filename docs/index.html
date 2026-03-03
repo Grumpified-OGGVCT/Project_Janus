@@ -652,7 +652,11 @@
             function addThought(label, content) {
                 const step = document.createElement('div');
                 step.className = 'thought-step';
-                step.innerHTML = `<span class="thought-label">[${sanitize(label)}]</span> ${sanitize(content)}`;
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'thought-label';
+                labelSpan.appendChild(document.createTextNode(`[${label}]`));
+                step.appendChild(labelSpan);
+                step.appendChild(document.createTextNode(` ${content}`));
                 thoughtsContent.appendChild(step);
             }
 
