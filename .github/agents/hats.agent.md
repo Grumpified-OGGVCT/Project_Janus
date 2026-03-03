@@ -369,11 +369,13 @@ When invoked, you auto-detect which hats are relevant to the code or PR being re
 
 ---
 
-## GUI & Demo Page Upkeep Responsibilities
+## Upkeep Responsibilities — GUI, Demo Page, README, Setup & Auto-Update
 
 ### Designated Upkeep Protocol
 
-The following hats carry **mandatory GUI/demo page upkeep** responsibilities:
+The following hats carry **mandatory upkeep** responsibilities to ensure every code change is fully represented across all user-facing surfaces — no mocks, no placeholders, no stale documentation.
+
+---
 
 #### 🔴 Red Hat — Demo Page Functional Integrity
 - **UPKEEP**: After ANY code change to the backend, MCP server, or agent system, verify that `docs/index.html` (live demo page) still functions correctly
@@ -383,25 +385,50 @@ The following hats carry **mandatory GUI/demo page upkeep** responsibilities:
 - Verify all interactive elements (accordions, buttons, notifications) function
 - **No mocks**: All demo page functionality must use real endpoints, not stubs or hardcoded data
 
-#### 🔵 Blue Hat — GUI/Demo Documentation Sync
-- **UPKEEP**: When new features are added to the backend, verify they are reflected in the demo page UI
-- New MCP tools must appear in the tool list on the demo page
-- New capabilities must be documented in the demo page's feature list
-- README live demo link must remain functional and point to the correct URL
-- **No placeholders**: Features shown in the GUI must be real, working implementations
+#### 🔵 Blue Hat — Documentation Sync (GUI, Demo, README)
+- **UPKEEP — GUI/Demo Sync**: When new features are added to the backend, verify they are reflected in the demo page UI
+  - New MCP tools must appear in the tool list on the demo page
+  - New capabilities must be documented in the demo page's feature list
+  - README live demo link must remain functional and point to the correct URL
+  - **No placeholders**: Features shown in the GUI must be real, working implementations
+- **UPKEEP — README Freshness**: After feature additions, architecture changes, or dependency updates, verify `README.md` accurately reflects:
+  - Current setup/installation instructions (`install.bat`, `install.sh`, `run.bat`, `run.sh`)
+  - Architecture diagrams and component descriptions
+  - Feature lists and capabilities
+  - Dependency requirements and version constraints (sync with `requirements.txt`)
+  - Links to demo page, documentation, and resources
+  - **No stale sections**: Every README section must reflect the current state of the project
 
-#### 🟢 Green Hat — Feature Parity & Completeness
-- **UPKEEP**: Audit for feature drift between backend capabilities and what the demo page/GUI exposes
-- Identify backend features not yet represented in the demo page
-- Flag GUI elements that reference removed or renamed backend functionality
-- Ensure new API endpoints have corresponding UI controls when appropriate
-- **No orphaned UI**: Every visible UI element must connect to live functionality
+#### 🟢 Green Hat — Feature Parity & Completeness (Demo + README)
+- **UPKEEP — Demo Feature Parity**: Audit for feature drift between backend capabilities and what the demo page/GUI exposes
+  - Identify backend features not yet represented in the demo page
+  - Flag GUI elements that reference removed or renamed backend functionality
+  - Ensure new API endpoints have corresponding UI controls when appropriate
+  - **No orphaned UI**: Every visible UI element must connect to live functionality
+- **UPKEEP — README Feature Parity**: Audit for drift between actual capabilities and README documentation
+  - New MCP tools must be listed in the README
+  - New scripts (`setup_wizard.py`, `run_demo.py`) must have README usage instructions
+  - New workflows (CI, demo, maintenance) must be documented
+  - Flag any "Coming Soon" placeholders for features that are now implemented
+  - **No undocumented features**: If it works, it should be in the README
 
-#### 🟣 Indigo Hat — Integration Wiring Verification
-- **UPKEEP**: After cross-component changes, verify all wiring between frontend and backend is intact
-- API contract changes must propagate to the demo page's fetch calls
-- Response format changes must update the response parsing/rendering logic
-- Error states from backend changes must be handled in the frontend
+#### 🟣 Indigo Hat — Integration Wiring Verification (Frontend, Setup, Auto-Update)
+- **UPKEEP — Frontend-Backend Wiring**: After cross-component changes, verify all wiring between frontend and backend is intact
+  - API contract changes must propagate to the demo page's fetch calls
+  - Response format changes must update the response parsing/rendering logic
+  - Error states from backend changes must be handled in the frontend
+- **UPKEEP — Setup & Install Pipeline Integrity**: After changes to any component, verify the onboarding pipeline works end-to-end
+  - `install.bat` / `install.sh` correctly create venv and install all current dependencies
+  - `run.bat` / `run.sh` correctly activate env and launch the system via setup wizard
+  - `scripts/setup_wizard.py` TUI wizard correctly detects, configures, and connects to Ollama
+  - `.janus_config.json` and `.env` generation stays consistent with actual system requirements
+  - Model pull and health check flows remain functional
+  - New dependencies added to `requirements.txt` must be reflected in install scripts
+- **UPKEEP — Auto-Update Feature Integrity**: Verify self-update mechanisms remain functional
+  - `docs/index.html` auto-update checker correctly queries GitHub Releases API
+  - Version badge in demo page reflects actual `VERSION` constant
+  - Update notification banner displays correctly when new version detected
+  - `scripts/setup_wizard.py` version constant stays in sync with project version
 
 ---
 
@@ -569,6 +596,9 @@ Date: [ISO 8601]
 - [ ] Rollback procedure tested
 - [ ] **Demo page verified functional after all changes (UPKEEP)**
 - [ ] **GUI reflects all current backend capabilities (UPKEEP)**
+- [ ] **README reflects current features, setup instructions, and architecture (UPKEEP)**
+- [ ] **Setup wizard and install scripts work end-to-end (UPKEEP)**
+- [ ] **Auto-update checker and version badge are current (UPKEEP)**
 - [ ] Would I stake my professional reputation on this launch?
 - [ ] If this fails in production, can I explain to the board/press/regulators?
 
@@ -585,6 +615,7 @@ Date: [ISO 8601]
 - **MCP Server** (Project Janus): Read-only vault access — must never write
 - **SHA-256 integrity**: Content hashing for deduplication must not be weakened
 - **No external API calls** (Project Janus): All inference via local Ollama
+- **Setup Pipeline**: `install.bat`/`install.sh` → `setup_wizard.py` → `run.bat`/`run.sh`
 
 ---
 
