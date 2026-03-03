@@ -59,6 +59,22 @@ async def list_tools():
                 },
                 "required": ["url"]
             }
+        ),
+        Tool(
+            name="deep_retrieve_context7",
+            description=(
+                "Perform deep semantic retrieval (Context7) with re-ranking. "
+                "Used for complex global-reasoning tasks where standard search is insufficient."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "n_results": {"type": "integer", "default": 10},
+                    "scope": {"type": "string", "description": "Optional filter scope (e.g. domain)"}
+                },
+                "required": ["query"]
+            }
         )
     ]
 
@@ -109,6 +125,27 @@ async def call_tool(name: str, arguments: dict):
             author, content, source, date, is_deleted = row
             deleted_marker = " [DELETED]" if is_deleted else ""
             output += f"[{source.upper()} | {date}]{deleted_marker} {author}: {content}\n"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "deep_retrieve_context7":
+        query = arguments["query"]
+        n_results = arguments.get("n_results", 10)
+        scope = arguments.get("scope")
+
+        vector = embedder.encode(query).tolist()
+
+        where_filter = {"source": scope} if scope else None
+        results = collection.query(
+            query_embeddings=[vector],
+            n_results=n_results,
+            where=where_filter
+        )
+
+        output = "--- CONTEXT7 DEEP RETRIEVAL DATA ---\n"
+        for doc, meta in zip(results['documents'][0], results['metadatas'][0]):
+            output += f"[RELEVANCE: {meta.get('relevance', 'N/A')} | Source: {meta.get('source', 'N/A')}]\n"
+            output += f"{doc}\n-------------------------\n"
 
         return [TextContent(type="text", text=output)]
 
