@@ -23,4 +23,7 @@ jobs:
         run: pip install -r requirements.txt pytest
 
       - name: Run unit tests
+        env:
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: pytest tests/ -v

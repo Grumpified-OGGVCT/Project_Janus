@@ -13,6 +13,7 @@ jobs:
 
     env:
       OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+      OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
