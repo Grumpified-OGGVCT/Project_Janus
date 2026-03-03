@@ -35,10 +35,13 @@ class Harvester:
     def ingest_thread(self, url):
         print(f"[Harvester] Ingesting: {url}")
 
-        # 1. Fetch Live Version
+        # 1. Fetch Live Version — stamp with current UTC time
         live_soup = self._fetch_html(url)
         if live_soup:
-            self._parse_and_store(live_soup, url, 'live')
+            self._parse_and_store(
+                live_soup, url, 'live',
+                datetime.utcnow().isoformat(timespec='seconds')
+            )
 
         # 2. Fetch Wayback (Temporal) Versions
         wayback_snapshots = self._get_wayback_urls(url)
@@ -76,8 +79,12 @@ class Harvester:
 
             snapshots = []
             oldest = data[1]  # Index 0 is header
+            # Parse CDX timestamp (YYYYMMDDHHmmss) into ISO-8601
+            ts_iso = datetime.strptime(oldest[0], '%Y%m%d%H%M%S').isoformat(
+                timespec='seconds'
+            )
             snapshots.append({
-                'timestamp': oldest[0],
+                'timestamp': ts_iso,
                 'url': f"https://web.archive.org/web/{oldest[0]}/{oldest[1]}"
             })
             return snapshots
