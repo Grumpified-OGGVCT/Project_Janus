@@ -33,8 +33,9 @@ async def list_tools():
         Tool(
             name="search_archives",
             description=(
-                "Search the local historical archives for a concept. "
-                "Returns raw, unfiltered text from both live and deleted posts."
+                "Search the local historical archives for a concept using "
+                "semantic similarity. Returns matching archival text with "
+                "author and source metadata."
             ),
             inputSchema={
                 "type": "object",
@@ -47,8 +48,9 @@ async def list_tools():
         Tool(
             name="view_thread_history",
             description=(
-                "Reconstruct a thread to show how it changed over time. "
-                "Highlights deleted or edited content."
+                "Reconstruct a thread to show how it changed over time across "
+                "all stored snapshots (live and Wayback). Posts flagged as "
+                "deleted are marked [DELETED] in the output."
             ),
             inputSchema={
                 "type": "object",
@@ -91,7 +93,8 @@ async def call_tool(name: str, arguments: dict):
 
         rows = cur.execute(
             """
-            SELECT p.author, p.content_clean, p.source_type, p.snapshot_date
+            SELECT p.author, p.content_clean, p.source_type, p.snapshot_date,
+                   p.is_deleted
             FROM posts p
             JOIN threads t ON p.thread_id = t.id
             WHERE t.url = ?
@@ -103,8 +106,9 @@ async def call_tool(name: str, arguments: dict):
 
         output = f"--- THREAD RECONSTRUCTION: {url} ---\n"
         for row in rows:
-            author, content, source, date = row
-            output += f"[{source.upper()} | {date}] {author}: {content}\n"
+            author, content, source, date, is_deleted = row
+            deleted_marker = " [DELETED]" if is_deleted else ""
+            output += f"[{source.upper()} | {date}]{deleted_marker} {author}: {content}\n"
 
         return [TextContent(type="text", text=output)]
 

@@ -13,7 +13,7 @@ fully navigable in any Markdown renderer (GitHub, Obsidian, VS Code, etc.).
 
 import os
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from urllib.parse import urldefrag, urljoin, urlparse
 
@@ -68,11 +68,11 @@ class SiteCloner:
         print(f"[SiteCloner] Max pages: {self.max_pages}")
 
         # ── Phase 1: Crawl ────────────────────────────────────────────
-        queue = [self._normalize_url(seed_url, seed_url)]
+        queue = deque([self._normalize_url(seed_url, seed_url)])
         soups: dict = {}
 
         while queue and len(self._visited) < self.max_pages:
-            url = queue.pop(0)
+            url = queue.popleft()
             if url in self._visited:
                 continue
             self._visited.add(url)
