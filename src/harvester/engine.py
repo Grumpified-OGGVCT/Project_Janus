@@ -9,6 +9,8 @@ import time
 class Harvester:
     def __init__(self, db_path):
         self.conn = sqlite3.connect(db_path)
+        # Ensure SQLite enforces declared FOREIGN KEY constraints on this connection.
+        self.conn.execute("PRAGMA foreign_keys = ON")
         self._init_db(db_path)
         self.session = requests.Session()
         self.session.headers.update({
