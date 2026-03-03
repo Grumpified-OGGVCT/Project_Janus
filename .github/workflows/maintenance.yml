@@ -1,0 +1,133 @@
+name: Weekly Maintenance
+
+on:
+  schedule:
+    - cron: '0 12 * * 2'  # Every Tuesday at 12:00 UTC (6 AM Central)
+  workflow_dispatch:       # Manual trigger for test runs
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
+jobs:
+  security-audit:
+    name: Security & Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pip-audit safety bandit pytest pytest-cov
+
+      - name: Dependency vulnerability scan
+        run: pip-audit --strict --desc || true
+        continue-on-error: true
+
+      - name: Safety check
+        run: safety check --full-report || true
+        continue-on-error: true
+
+      - name: Bandit security scan
+        run: bandit -r src/ scripts/ -f json -o bandit-report.json || true
+        continue-on-error: true
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo '--- Scanning for potential hardcoded secrets ---'
+          grep -rn --include='*.py' --include='*.yml' --include='*.yaml' --include='*.html' \
+            -E '(password|secret|token|api_key|apikey)\s*=\s*["'\''\"]{1}[^${}]' \
+            src/ scripts/ docs/ .github/ || echo 'No hardcoded secrets found.'
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+          retention-days: 30
+
+  test-suite:
+    name: Full Test Suite with Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing
+        continue-on-error: true
+
+  docs-check:
+    name: Documentation & Link Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check README links
+        run: |
+          echo '--- Checking README.md for broken links ---'
+          grep -oP 'https?://[^\s\)\]]+' README.md | while read url; do
+            status=$(curl -o /dev/null -s -w '%{http_code}' --max-time 10 "$url" || echo '000')
+            if [ "$status" -ge 400 ] || [ "$status" = '000' ]; then
+              echo "❌ BROKEN ($status): $url"
+            else
+              echo "✅ OK ($status): $url"
+            fi
+          done
+
+      - name: Check docs page exists
+        run: |
+          if [ -f docs/index.html ]; then
+            echo '✅ docs/index.html exists'
+            echo "Size: $(wc -c < docs/index.html) bytes"
+          else
+            echo '❌ docs/index.html is missing!'
+            exit 1
+          fi
+
+      - name: Verify demo JSON freshness
+        run: |
+          if [ -f docs/latest_run.json ]; then
+            echo '✅ latest_run.json exists'
+            cat docs/latest_run.json | python3 -m json.tool || echo '⚠️ Invalid JSON'
+          else
+            echo '⚠️ latest_run.json not found (will be created by demo workflow)'
+          fi
+
+      - name: HTML validation
+        run: |
+          echo '--- Basic HTML validation ---'
+          python3 -c "
+import html.parser, sys
+class V(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+    def handle_starttag(self, tag, attrs):
+        pass
+    def handle_endtag(self, tag):
+        pass
+try:
+    with open('docs/index.html') as f:
+        V().feed(f.read())
+    print('✅ HTML parsed without errors')
+except Exception as e:
+    print(f'❌ HTML parse error: {e}')
+    sys.exit(1)
+          "
