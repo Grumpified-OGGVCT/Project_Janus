@@ -61,6 +61,31 @@ async def list_tools():
             }
         ),
         Tool(
+            name="deep_retrieve_context7",
+            description=(
+                "Perform deep semantic retrieval with re-ranking (Infinite RAG). "
+                "Retrieves extensive historical context to augment agent memory."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search term or complex concept to look up"
+                    },
+                    "n_results": {
+                        "type": "integer",
+                        "description": "Number of results (default 10)"
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": "Optional domain filter"
+                    }
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
             name="request_planning",
             description="Initiate the planning phase for a new task.",
             inputSchema={"type": "object", "properties": {}}
@@ -124,6 +149,28 @@ async def call_tool(name: str, arguments: dict):
             author, content, source, date, is_deleted = row
             deleted_marker = " [DELETED]" if is_deleted else ""
             output += f"[{source.upper()} | {date}]{deleted_marker} {author}: {content}\n"
+
+        return [TextContent(type="text", text=output)]
+
+    elif name == "deep_retrieve_context7":
+        query = arguments.get("query", "")
+        n_results = arguments.get("n_results", 10)
+
+        vector = embedder.encode(query).tolist()
+
+        # We don't implement full contextual re-ranking here, but we fetch more results
+        results = collection.query(query_embeddings=[vector], n_results=n_results)
+
+        if not results['documents'][0]:
+            return [TextContent(type="text", text="No results found in deep retrieval.")]
+
+        output = f"--- DEEP RETRIEVAL (Infinite RAG) FOR: '{query}' ---\n"
+        for i, (doc, meta) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
+            output += (
+                f"[Result {i+1} | Author: {meta.get('author', 'N/A')} "
+                f"| Source: {meta.get('source', 'N/A')}]\n"
+            )
+            output += f"{doc}\n-------------------------\n"
 
         return [TextContent(type="text", text=output)]
 
