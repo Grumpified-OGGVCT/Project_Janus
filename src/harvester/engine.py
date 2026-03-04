@@ -1,6 +1,9 @@
 import requests
 import hashlib
 import sqlite3
+import os
+import chromadb
+from sentence_transformers import SentenceTransformer
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 import time
@@ -12,6 +15,13 @@ class Harvester:
         # Ensure SQLite enforces declared FOREIGN KEY constraints on this connection.
         self.conn.execute("PRAGMA foreign_keys = ON")
         self._init_db(db_path)
+
+        # Init ChromaDB for Infinite RAG
+        chroma_path = os.path.join(os.path.dirname(db_path), "chroma_db")
+        self.chroma_client = chromadb.PersistentClient(path=chroma_path)
+        self.collection = self.chroma_client.get_or_create_collection(name="stolen_history")
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': (
@@ -137,6 +147,16 @@ class Harvester:
                         content_clean, source_type, snapshot_date, content_hash
                     )
                 )
+
+                # Index into ChromaDB
+                if content_clean:
+                    vector = self.embedder.encode(content_clean).tolist()
+                    self.collection.add(
+                        embeddings=[vector],
+                        documents=[content_clean],
+                        metadatas=[{"author": author, "source": source_type, "url": url}],
+                        ids=[f"{thread_id}_{post_id}_{content_hash}"]
+                    )
 
         self.conn.commit()
         print(f"[Harvester] Stored data from {source_type} for {url}")

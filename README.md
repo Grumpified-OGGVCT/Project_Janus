@@ -19,11 +19,15 @@ User Prompt
 Mistral Large 3 (Ollama — 256K ctx, native function-calling)
     ↓ tool call          ↑ raw data
 MCP Server (read-only librarian)
-    ↓ queries
+    ↓ queries            ↑ context
 SQLite Vault + ChromaDB (vector index)
     ↑ populated by
 Harvester  /  Site Cloner (field agents)
 ```
+
+### Infinite RAG & O(1) Context Bounding
+Project Janus employs an "Infinite RAG" system using the Context7 protocol via the `deep_retrieve_context7` MCP tool. This allows the agent to semantically search vast historical archives dynamically without overflowing the context window.
+It enforces O(1) Context Bounding (the Silver Hat protocol), ensuring the agent's prompt never grows infinitely: the context is strictly bounded to a lightweight workspace snapshot and only the last ~10 actions, while the heavy lifting is handled by massive vector retrieval behind the scenes.
 
 | Component | File | Role |
 |-----------|------|------|
@@ -77,6 +81,7 @@ CLONE_MAX_PAGES = 1000
 - **Temporal versioning** — `live`, `wayback_oldest`, `wayback_recent` captures stored side-by-side
 - **Immutable vault** — SHA-256 content hashes; MCP server always opens DB in `mode=ro`
 - **Semantic search** — `all-MiniLM-L6-v2` embeddings + ChromaDB, entirely local
+- **Infinite RAG** — Context7 deep retrieval via `deep_retrieve_context7` allowing infinite scalability with bounded memory
 - **100% local AI** — zero OpenAI / Anthropic; all inference via Ollama
 - **Native tool-calling** — Mistral Large 3 function-calling drives the MCP tool loop
 - **CI-tested** — unit tests run on every push via GitHub Actions

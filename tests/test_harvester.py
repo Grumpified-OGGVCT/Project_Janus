@@ -7,6 +7,13 @@ from bs4 import BeautifulSoup
 from src.harvester.engine import Harvester
 
 
+
+@pytest.fixture(autouse=True)
+def mock_chroma_and_embedder(monkeypatch):
+    from unittest.mock import MagicMock
+    monkeypatch.setattr("src.harvester.engine.chromadb.PersistentClient", MagicMock())
+    monkeypatch.setattr("src.harvester.engine.SentenceTransformer", MagicMock())
+
 @pytest.fixture
 def db_file(tmp_path):
     return str(tmp_path / "vault.db")
