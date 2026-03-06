@@ -8,41 +8,60 @@ from unittest.mock import MagicMock
 
 # 1. sentence_transformers — encode() returns a fixed-length float list
 _st = MagicMock()
-_st.SentenceTransformer.return_value.encode.return_value = [0.1] * 384
+_mock_encoder = MagicMock()
+_mock_encoder.encode.return_value.tolist.return_value = [0.1] * 384
+_st.SentenceTransformer.return_value = _mock_encoder
 sys.modules['sentence_transformers'] = _st
 
 # 2. chromadb — query() returns empty result sets by default
 _collection = MagicMock()
 _collection.query.return_value = {'documents': [[]], 'metadatas': [[]]}
+_collection.count.return_value = 0
 _chroma = MagicMock()
 _chroma.PersistentClient.return_value.get_or_create_collection.return_value = _collection
 sys.modules['chromadb'] = _chroma
 
-# 3. mcp — make list_tools/call_tool decorators transparent (identity functions)
-#    so the actual async functions in server.py remain callable in tests.
-class _MockServer:
-    def __init__(self, name):
+# 3. mcp — FastMCP as a transparent decorator passthrough
+#    The decorators @app.tool(), @app.resource(), @app.prompt() should
+#    just return the wrapped function unchanged so tests can call them directly.
+
+class _MockFastMCP:
+    """Minimal mock that makes @app.tool() etc. into identity decorators."""
+    def __init__(self, name="test", **kwargs):
+        self.name = name
+        self.settings = MagicMock()
+        self._instructions = kwargs.get("instructions", "")
+
+    def tool(self, *args, **kwargs):
+        """@app.tool() — return the function unchanged."""
+        def decorator(fn):
+            return fn
+        return decorator
+
+    def resource(self, uri=None, *args, **kwargs):
+        """@app.resource("janus://status") — return the function unchanged."""
+        def decorator(fn):
+            return fn
+        return decorator
+
+    def prompt(self, *args, **kwargs):
+        """@app.prompt() — return the function unchanged."""
+        def decorator(fn):
+            return fn
+        return decorator
+
+    def run(self, **kwargs):
         pass
-    def list_tools(self):
-        return lambda fn: fn
-    def call_tool(self):
-        return lambda fn: fn
-    def create_initialization_options(self):
-        return {}
 
-_mcp_server_mod = MagicMock()
-_mcp_server_mod.Server = _MockServer
-sys.modules['mcp'] = MagicMock()
-sys.modules['mcp.server'] = _mcp_server_mod
+_mcp_mod = MagicMock()
+_mcp_fastmcp_mod = MagicMock()
+_mcp_fastmcp_mod.FastMCP = _MockFastMCP
+sys.modules['mcp'] = _mcp_mod
+sys.modules['mcp.server'] = MagicMock()
+sys.modules['mcp.server.fastmcp'] = _mcp_fastmcp_mod
 sys.modules['mcp.server.stdio'] = MagicMock()
+sys.modules['mcp.types'] = MagicMock()
 
-# TextContent must be a real class so test assertions can inspect .text
-class _TextContent:
-    def __init__(self, *, type, text):
-        self.type = type
-        self.text = text
-
-_mcp_types = MagicMock()
-_mcp_types.TextContent = _TextContent
-_mcp_types.Tool = MagicMock()
-sys.modules['mcp.types'] = _mcp_types
+# 4. duckduckgo_search — mock to avoid network calls in tests
+_ddgs_mock = MagicMock()
+sys.modules['duckduckgo_search'] = _ddgs_mock

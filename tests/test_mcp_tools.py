@@ -1,8 +1,7 @@
-import asyncio
 import sqlite3
 import os
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -34,63 +33,197 @@ def _make_test_db(tmp_path: str) -> str:
     return db_path
 
 
-def test_view_thread_history_returns_post(tmp_path, monkeypatch):
+# ─── Vault Tool Tests ─────────────────────────────────────
+
+def test_view_thread_timeline_returns_post(tmp_path, monkeypatch):
+    """view_thread_timeline should return matching post data."""
     db_path = _make_test_db(str(tmp_path))
     monkeypatch.setattr(
-        srv, 'get_db',
+        srv, '_get_db',
         lambda: sqlite3.connect(f'file:{db_path}?mode=ro', uri=True)
     )
 
-    result = asyncio.run(
-        srv.call_tool("view_thread_history", {"url": "https://example.com/t/1"})
-    )
+    result = srv.view_thread_timeline(url="https://example.com/t/1")
 
-    assert len(result) == 1
-    assert "Alice" in result[0].text
-    assert "Ancient knowledge here" in result[0].text
-    assert "THREAD RECONSTRUCTION" in result[0].text
+    assert "Alice" in result
+    assert "Ancient knowledge here" in result
+    assert "THREAD TIMELINE" in result
 
 
-def test_view_thread_history_unknown_url_returns_empty_reconstruction(tmp_path, monkeypatch):
+def test_view_thread_timeline_unknown_url(tmp_path, monkeypatch):
+    """Unknown URL should return 'No thread data found' message."""
     db_path = _make_test_db(str(tmp_path))
     monkeypatch.setattr(
-        srv, 'get_db',
+        srv, '_get_db',
         lambda: sqlite3.connect(f'file:{db_path}?mode=ro', uri=True)
     )
 
-    result = asyncio.run(
-        srv.call_tool("view_thread_history", {"url": "https://nowhere.example.com"})
-    )
+    result = srv.view_thread_timeline(url="https://nowhere.example.com")
 
-    assert len(result) == 1
-    assert "THREAD RECONSTRUCTION" in result[0].text
-    # No post data — just the header line
-    assert "Alice" not in result[0].text
+    assert "No thread data found" in result
+    assert "Alice" not in result
 
 
-def test_search_archives_returns_raw_header(monkeypatch):
+def test_search_vault_returns_results(monkeypatch):
+    """search_vault should return formatted results when embeddings work."""
     mock_embedder = MagicMock()
     mock_embedder.encode.return_value.tolist.return_value = [0.1] * 384
-    monkeypatch.setattr(srv, 'embedder', mock_embedder)
+    monkeypatch.setattr(srv, '_embedder', mock_embedder)
+    # Force _get_embedder to return our mock
+    monkeypatch.setattr(srv, '_get_embedder', lambda: mock_embedder)
 
     mock_collection = MagicMock()
     mock_collection.query.return_value = {
         'documents': [["Ancient pyramid text"]],
         'metadatas': [[{'author': 'Bob', 'source': 'wayback_oldest'}]],
     }
-    monkeypatch.setattr(srv, 'collection', mock_collection)
+    monkeypatch.setattr(srv, '_collection', mock_collection)
+    monkeypatch.setattr(srv, '_get_collection', lambda: mock_collection)
 
-    result = asyncio.run(
-        srv.call_tool("search_archives", {"query": "pyramids"})
+    result = srv.search_vault(query="pyramids")
+
+    assert "VAULT SEARCH" in result
+    assert "Ancient pyramid text" in result
+    assert "Bob" in result
+
+
+def test_search_vault_no_embeddings(monkeypatch):
+    """search_vault should return warning when embeddings unavailable."""
+    monkeypatch.setattr(srv, '_get_embedder', lambda: None)
+    monkeypatch.setattr(srv, '_get_collection', lambda: None)
+
+    result = srv.search_vault(query="anything")
+
+    assert "unavailable" in result.lower()
+
+
+def test_vault_stats_no_db(monkeypatch):
+    """vault_stats should handle missing database gracefully."""
+    monkeypatch.setattr(srv, '_get_db', lambda: None)
+    monkeypatch.setattr(srv, '_get_collection', lambda: None)
+
+    result = srv.vault_stats()
+
+    assert "VAULT STATISTICS" in result
+    assert "not found" in result
+
+
+# ─── Web Tool Tests ─────────────────────────────────────
+
+def test_extract_page_returns_content(monkeypatch):
+    """extract_page should strip boilerplate and return clean text."""
+    import httpx
+
+    mock_response = MagicMock()
+    mock_response.text = """
+    <html>
+    <head><title>Test Page</title></head>
+    <body>
+        <nav>Navigation</nav>
+        <main><p>Important content here.</p></main>
+        <footer>Footer stuff</footer>
+    </body>
+    </html>
+    """
+    mock_response.raise_for_status = MagicMock()
+
+    monkeypatch.setattr(httpx, 'get', lambda *args, **kwargs: mock_response)
+
+    result = srv.extract_page(url="https://example.com")
+
+    assert "Important content here" in result
+    assert "Test Page" in result
+    # Nav/footer should be stripped
+    assert "Navigation" not in result
+    assert "Footer stuff" not in result
+
+
+def test_summarize_text_reduces():
+    """summarize_text should reduce long text to fewer sentences."""
+    text = (
+        "The first sentence is important. "
+        "The second provides context. "
+        "The third adds detail. "
+        "The fourth is supplementary. "
+        "The fifth concludes the topic. "
+        "The sixth is extra padding. "
+        "The seventh repeats concepts."
     )
+    result = srv.summarize_text(text=text, max_sentences=3)
 
-    assert len(result) == 1
-    assert "--- RAW ARCHIVAL DATA ---" in result[0].text
-    assert "Ancient pyramid text" in result[0].text
-    assert "Bob" in result[0].text
+    assert "SUMMARY" in result
+    assert "3 of 7" in result
 
 
-def test_unknown_tool_returns_error_message():
-    result = asyncio.run(srv.call_tool("nonexistent_tool", {}))
-    assert len(result) == 1
-    assert "Unknown tool" in result[0].text
+def test_summarize_text_short_passthrough():
+    """Short text should pass through unchanged."""
+    text = "Only one sentence."
+    result = srv.summarize_text(text=text, max_sentences=5)
+
+    assert text == result  # No summarization needed
+
+
+# ─── Lifecycle Tool Tests ─────────────────────────────────
+
+def test_request_planning_creates_task():
+    """request_planning should create a new active task."""
+    # Reset state
+    srv.task_state["current_task"] = None
+    srv.task_state["history"] = []
+
+    result = srv.request_planning()
+
+    assert "Planning initiated" in result
+    assert srv.task_state["current_task"] is not None
+    assert srv.task_state["current_task"]["status"] == "active"
+
+
+def test_approve_task_completion():
+    """approve_task_completion should mark active task as completed."""
+    srv.task_state["current_task"] = None
+    srv.task_state["history"] = []
+    srv.request_planning()
+
+    result = srv.approve_task_completion()
+
+    assert "completed" in result.lower()
+    assert srv.task_state["current_task"] is None
+
+
+def test_approve_no_active_task():
+    """approve_task_completion with no active task should warn."""
+    srv.task_state["current_task"] = None
+    srv.task_state["history"] = []
+
+    result = srv.approve_task_completion()
+
+    assert "No active task" in result
+
+
+def test_get_next_task_none_pending():
+    """get_next_task should report no pending tasks."""
+    srv.task_state["current_task"] = None
+    srv.task_state["history"] = []
+
+    result = srv.get_next_task()
+
+    assert "No pending tasks" in result
+
+
+# ─── Run Agent Tool Dispatch Tests ─────────────────────────
+
+def test_run_mcp_tool_unknown():
+    """run_mcp_tool should return error for unknown tools."""
+    from run_agent import run_mcp_tool
+
+    result = run_mcp_tool("nonexistent_tool", {})
+    assert "Unknown tool" in result
+
+
+def test_run_mcp_tool_dispatches_vault_stats():
+    """run_mcp_tool should dispatch vault_stats correctly."""
+    from run_agent import run_mcp_tool
+
+    # vault_stats doesn't need embeddings to return output
+    result = run_mcp_tool("vault_stats", {})
+    assert "VAULT STATISTICS" in result
