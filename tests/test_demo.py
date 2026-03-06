@@ -29,11 +29,21 @@ import scripts.run_demo as demo
 # ---------------------------------------------------------------------------
 # Skip marker — applied to every live test
 # ---------------------------------------------------------------------------
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "").strip()
-needs_ollama = pytest.mark.skipif(
-    not OLLAMA_HOST,
-    reason="OLLAMA_HOST not set — skipping live Ollama API tests",
-)
+_raw_host = os.getenv("OLLAMA_HOST", "").strip()
+OLLAMA_HOST = demo._normalize_host(_raw_host) if _raw_host else ""
+
+
+@pytest.fixture(scope="module")
+def require_ollama():
+    """Fixture to dynamically check if the Ollama server is reachable."""
+    if not OLLAMA_HOST:
+        pytest.skip("OLLAMA_HOST not set — skipping live API tests")
+    try:
+        resp = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        if resp.status_code != 200:
+            pytest.skip(f"Ollama server returned status {resp.status_code} — skipping live API tests")
+    except Exception as e:
+        pytest.skip(f"Ollama server not reachable ({e}) — skipping live API tests")
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +83,7 @@ def test_main_exits_when_ollama_host_empty(tmp_path, monkeypatch):
 # Live API tests — real calls to the Ollama endpoint
 # ---------------------------------------------------------------------------
 
-@needs_ollama
+@pytest.mark.usefixtures("require_ollama")
 def test_run_query_returns_nonempty_string():
     """run_query() must return a non-empty string from the live Ollama API."""
     result = demo.run_query(OLLAMA_HOST)
@@ -81,10 +91,10 @@ def test_run_query_returns_nonempty_string():
     assert len(result) > 0, "Expected a non-empty response from the model"
 
 
-@needs_ollama
+@pytest.mark.usefixtures("require_ollama")
 def test_run_query_response_is_text_not_error():
     """The live response must not contain a top-level error field."""
-    url = f"{OLLAMA_HOST.rstrip('/')}/api/chat"
+    url = f"{OLLAMA_HOST}/api/chat"
     payload = {
         "model": demo.MODEL,
         "messages": [
@@ -100,10 +110,10 @@ def test_run_query_response_is_text_not_error():
     assert len(data["message"]["content"]) > 0
 
 
-@needs_ollama
+@pytest.mark.usefixtures("require_ollama")
 def test_main_writes_valid_json_with_response(tmp_path, monkeypatch):
     """main() must write docs/latest_run.json with a real response and no error."""
-    monkeypatch.setenv("OLLAMA_HOST", OLLAMA_HOST)
+    monkeypatch.setenv("OLLAMA_HOST", _raw_host)
     monkeypatch.chdir(tmp_path)
 
     demo.main()
@@ -113,11 +123,10 @@ def test_main_writes_valid_json_with_response(tmp_path, monkeypatch):
 
     out = json.loads(out_path.read_text(encoding="utf-8"))
     assert out["model"] == demo.MODEL
-    assert out["ollama_host"] == OLLAMA_HOST
+    assert out["ollama_host"] == _raw_host
     assert out["error"] is None, f"Expected no error but got: {out['error']}"
     assert len(out["response"]) > 0, "Expected a non-empty response in the JSON output"
     assert out["query"] == demo.DEMO_QUERY
     # Validate the timestamp is a parseable ISO 8601 string
     from datetime import datetime
     datetime.fromisoformat(out["timestamp"])  # raises ValueError if malformed
-
