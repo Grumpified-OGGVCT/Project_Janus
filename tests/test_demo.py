@@ -94,7 +94,7 @@ def test_run_query_returns_nonempty_string():
 @pytest.mark.usefixtures("require_ollama")
 def test_run_query_response_is_text_not_error():
     """The live response must not contain a top-level error field."""
-    url = f"{OLLAMA_HOST}/api/chat"
+    url = f"{OLLAMA_HOST.rstrip('/')}/api/chat"
     payload = {
         "model": demo.MODEL,
         "messages": [
@@ -123,7 +123,7 @@ def test_main_writes_valid_json_with_response(tmp_path, monkeypatch):
 
     out = json.loads(out_path.read_text(encoding="utf-8"))
     assert out["model"] == demo.MODEL
-    assert out["ollama_host"] == _raw_host
+    assert out["ollama_host"] == OLLAMA_HOST
     assert out["error"] is None, f"Expected no error but got: {out['error']}"
     assert len(out["response"]) > 0, "Expected a non-empty response in the JSON output"
     assert out["query"] == demo.DEMO_QUERY

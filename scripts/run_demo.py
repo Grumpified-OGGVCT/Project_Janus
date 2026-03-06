@@ -41,18 +41,9 @@ def _build_headers() -> dict:
     return headers
 
 
-
-def _normalize_host(host: str) -> str:
-    """Ensure the host has an http(s):// scheme prefix."""
-    host = host.strip().rstrip("/")
-    if host and not host.startswith(("http://", "https://")):
-        host = f"http://{host}"
-    return host
-
-
 def run_query(host: str) -> str:
     """Call the Ollama /api/chat endpoint and return the assistant message text."""
-    url = f"{_normalize_host(host)}/api/chat"
+    url = f"{host.rstrip('/')}/api/chat"
     payload = {
         "model": MODEL,
         "messages": [
@@ -68,13 +59,11 @@ def run_query(host: str) -> str:
 
 
 def main():
-    raw_host = os.getenv("OLLAMA_HOST", "").strip()
-    if not raw_host:
+    host = os.getenv("OLLAMA_HOST", "").strip()
+    if not host:
         print("[demo] Error: OLLAMA_HOST environment variable is not set or is empty.")
         print("[demo] Set OLLAMA_HOST to the URL of your remote Ollama server.")
         sys.exit(1)
-
-    host = _normalize_host(raw_host)
 
     print(f"[demo] Connecting to Ollama at : {host}")
     print(f"[demo] Model                   : {MODEL}")
@@ -82,7 +71,7 @@ def main():
 
     output = {
         "model": MODEL,
-        "ollama_host": raw_host,
+        "ollama_host": host,
         "query": DEMO_QUERY,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "response": "",
