@@ -29,10 +29,25 @@ import scripts.run_demo as demo
 # ---------------------------------------------------------------------------
 # Skip marker — applied to every live test
 # ---------------------------------------------------------------------------
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "").strip()
+_raw_host = os.getenv("OLLAMA_HOST", "").strip()
+OLLAMA_HOST = demo._normalize_host(_raw_host) if _raw_host else ""
+
+
+def _ollama_is_reachable() -> bool:
+    """Check if Ollama server is actually reachable."""
+    if not OLLAMA_HOST:
+        return False
+    try:
+        resp = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+_OLLAMA_LIVE = _ollama_is_reachable()
 needs_ollama = pytest.mark.skipif(
-    not OLLAMA_HOST,
-    reason="OLLAMA_HOST not set — skipping live Ollama API tests",
+    not _OLLAMA_LIVE,
+    reason="Ollama server not reachable — skipping live API tests",
 )
 
 
@@ -84,7 +99,7 @@ def test_run_query_returns_nonempty_string():
 @needs_ollama
 def test_run_query_response_is_text_not_error():
     """The live response must not contain a top-level error field."""
-    url = f"{OLLAMA_HOST.rstrip('/')}/api/chat"
+    url = f"{OLLAMA_HOST}/api/chat"
     payload = {
         "model": demo.MODEL,
         "messages": [
@@ -113,7 +128,7 @@ def test_main_writes_valid_json_with_response(tmp_path, monkeypatch):
 
     out = json.loads(out_path.read_text(encoding="utf-8"))
     assert out["model"] == demo.MODEL
-    assert out["ollama_host"] == OLLAMA_HOST
+    assert out["ollama_host"] == _raw_host
     assert out["error"] is None, f"Expected no error but got: {out['error']}"
     assert len(out["response"]) > 0, "Expected a non-empty response in the JSON output"
     assert out["query"] == demo.DEMO_QUERY
