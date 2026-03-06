@@ -46,9 +46,18 @@ certifi>=2024.0.0                # CA certificate bundle
 psutil>=5.9.0                    # Process/system resource monitoring
 
 # ─── AI / LLM Integration ──────────────────────────────────────
-# Ollama is accessed via REST API (no pip package needed)
-# These support future AI pipeline features:
+ollama>=0.4.0                    # Ollama Python client (run_agent.py)
 tiktoken>=0.6.0                  # Token counting (OpenAI-compatible)
+
+# ─── MCP Server (Multi-Transport) ──────────────────────────────
+mcp[cli]>=1.0.0                  # MCP SDK with FastMCP + transports
+uvicorn>=0.30.0                  # ASGI server for Streamable HTTP
+starlette>=0.40.0                # ASGI framework (FastMCP dependency)
+sentence-transformers>=2.5.0     # Embeddings for semantic search
+chromadb>=0.4.0                  # Vector database for archive search
+
+# ─── Web Search & Crawl ──────────────────────────────────────
+duckduckgo-search>=6.0.0         # DDG search API (no key needed)
 
 # ─── Testing ────────────────────────────────────────────────────
 pytest>=8.0.0                    # Test framework
@@ -57,12 +66,12 @@ pytest-asyncio>=0.23.0           # Async test support
 responses>=0.25.0                # HTTP request mocking
 hypothesis>=6.100.0              # Property-based / fuzz testing
 
-# ─── Code Quality & Security Scanning ───────────────────────────
+# ─── Code Quality & Security Scanning ───────────────────────
 ruff>=0.3.0                      # Linter + formatter (replaces flake8/black/isort)
 bandit>=1.7.0                    # Security linting (SAST)
 pip-audit>=2.7.0                 # Dependency vulnerability scanning
 mypy>=1.8.0                      # Static type checking
 
-# ─── Documentation ──────────────────────────────────────────────
+# ─── Documentation ──────────────────────────────────────────
 mkdocs>=1.5.0                    # Documentation site generator
 mkdocs-material>=9.5.0           # Material theme for MkDocs

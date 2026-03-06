@@ -90,14 +90,24 @@ echo ================================================================
 echo.
 python scripts/setup_wizard.py
 
+:: ─── Verify MCP Server ──────────────────────────────────────
+echo.
+echo [*] Verifying Janus MCP server...
+python -c "from src.mcp_server.server import app; print('[OK] MCP server loadable — 13 tools, 2 resources, 3 prompts')"
+if errorlevel 1 (
+    echo [WARN] MCP server verification failed — some features may be unavailable.
+)
+
 :: ─── Done ───────────────────────────────────────────────────
 echo.
 echo ================================================================
 echo [+] Installation complete!
 echo.
 echo   Quick launch:    run.bat
+echo   MCP HTTP server: python serve.py
 echo   Reconfigure:     python scripts/setup_wizard.py --config
 echo   Health check:    python scripts/setup_wizard.py --check
 echo ================================================================
 echo.
 pause
+

@@ -73,6 +73,46 @@
             margin-top: 0.5rem;
         }
 
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.6rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .connection-status.checking {
+            background: rgba(243, 156, 18, 0.15);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .connection-status.connected {
+            background: rgba(46, 204, 113, 0.15);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .connection-status .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .connection-status.checking .status-indicator { background: var(--warning); animation: pulse 1s infinite; }
+        .connection-status.connected .status-indicator { background: var(--success); }
+        .connection-status.disconnected .status-indicator { background: var(--danger); }
+
         .update-banner {
             display: none;
             background: var(--warning);
@@ -180,7 +220,8 @@
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             background: var(--bg);
             border: 1px solid var(--border);
             color: var(--text);
@@ -192,7 +233,8 @@
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 2px var(--accent-glow);
@@ -201,6 +243,110 @@
         .form-group textarea {
             min-height: 80px;
             resize: vertical;
+        }
+
+        /* Mode Toggle */
+        .mode-toggle {
+            display: flex;
+            gap: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .mode-toggle label {
+            flex: 1;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            background: var(--bg);
+            color: var(--text-muted);
+            transition: all 0.3s;
+            border-right: 1px solid var(--border);
+        }
+
+        .mode-toggle label:last-child { border-right: none; }
+
+        .mode-toggle input[type="radio"] { display: none; }
+
+        .mode-toggle input[type="radio"]:checked + label,
+        .mode-toggle label.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .cloud-fields {
+            display: none;
+            gap: 0.8rem;
+            flex-direction: column;
+            margin-top: 0.5rem;
+            padding: 0.8rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .cloud-fields.visible {
+            display: flex;
+        }
+
+        /* Ollama Guidance Panel */
+        .ollama-guidance {
+            display: none;
+            background: var(--thought-bg);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .ollama-guidance.visible {
+            display: block;
+        }
+
+        .ollama-guidance h3 {
+            color: var(--warning);
+            font-size: 1rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .ollama-guidance p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ollama-guidance code {
+            background: var(--bg);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .ollama-guidance .guidance-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-glow);
         }
 
         .btn-primary {
@@ -428,6 +574,10 @@
             <h1>🏛️ Project Janus</h1>
             <p>Sovereign Archival Intelligence — Fully Local AI Brain</p>
             <span class="version-badge" id="versionBadge" aria-label="Current version">v0.2.0</span>
+            <div class="connection-status checking" id="connectionStatus" aria-live="polite">
+                <span class="status-indicator" aria-hidden="true"></span>
+                <span id="connectionText">Checking Ollama...</span>
+            </div>
         </header>
 
         <!-- Architecture Overview -->
@@ -506,12 +656,62 @@
         <!-- Live Demo -->
         <section aria-labelledby="demo-heading">
             <h2 id="demo-heading">🔬 Live Demo</h2>
+
+            <!-- Ollama Not Detected Guidance -->
+            <div class="ollama-guidance" id="ollamaGuidance" aria-live="polite">
+                <h3>⚠️ Ollama Not Detected</h3>
+                <p>The local AI brain requires Ollama to be running. No server was found at <code id="guidanceHost">localhost:11434</code>.</p>
+                <p>Quick start: open a terminal and run <code>ollama serve</code></p>
+                <div class="guidance-actions">
+                    <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer" class="btn-secondary">📥 Download Ollama</a>
+                    <button class="btn-secondary" id="retryConnectionBtn" type="button">🔄 Retry Connection</button>
+                    <button class="btn-secondary" id="switchToCloudBtn" type="button">☁️ Use Cloud API Instead</button>
+                </div>
+            </div>
+
             <form class="demo-form" id="demoForm" aria-label="Live demo form">
+                <!-- Connection Mode Toggle -->
                 <div class="form-group">
+                    <label>Connection Mode</label>
+                    <div class="mode-toggle" role="radiogroup" aria-label="Connection mode">
+                        <input type="radio" name="connMode" id="modeLocal" value="local" checked>
+                        <label for="modeLocal" id="modeLabelLocal" class="active">🖥️ Local Ollama</label>
+                        <input type="radio" name="connMode" id="modeCloud" value="cloud">
+                        <label for="modeCloud" id="modeLabelCloud">☁️ Cloud / Remote API</label>
+                    </div>
+                </div>
+
+                <!-- Local Mode Fields -->
+                <div class="form-group" id="localFields">
                     <label for="ollamaHost">Ollama Host</label>
                     <input type="url" id="ollamaHost" placeholder="http://localhost:11434" value="http://localhost:11434" aria-describedby="hostHelp">
                     <small id="hostHelp" style="color: var(--text-muted); font-size: 0.8rem;">Your local Ollama server address</small>
                 </div>
+
+                <!-- Cloud Mode Fields -->
+                <div class="cloud-fields" id="cloudFields">
+                    <div class="form-group">
+                        <label for="cloudHost">Remote Ollama URL</label>
+                        <input type="url" id="cloudHost" placeholder="https://ollama.example.com" aria-describedby="cloudHelp">
+                        <small id="cloudHelp" style="color: var(--text-muted); font-size: 0.8rem;">URL of your remote Ollama server</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="apiKey">API Key <span style="color: var(--text-muted);">(optional)</span></label>
+                        <input type="password" id="apiKey" placeholder="Bearer token for authenticated endpoints" autocomplete="off">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">Sent as Authorization: Bearer &lt;key&gt;</small>
+                    </div>
+                </div>
+
+                <!-- Model Selection -->
+                <div class="form-group">
+                    <label for="modelSelect">Model</label>
+                    <select id="modelSelect" aria-label="Select AI model">
+                        <option value="mistral:latest">mistral:latest (default)</option>
+                    </select>
+                    <small id="modelHelp" style="color: var(--text-muted); font-size: 0.8rem;">Models auto-populated from Ollama</small>
+                </div>
+
+                <!-- Prompt -->
                 <div class="form-group">
                     <label for="userPrompt">Prompt</label>
                     <textarea id="userPrompt" placeholder="Ask the sovereign brain anything..." aria-label="Enter your prompt for the AI">What pages have been archived from example.com?</textarea>
@@ -553,7 +753,7 @@
                 Project Janus — <a href="https://github.com/Grumpified-OGGVCT/Project_Janus" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
             </p>
             <p style="margin-top: 0.5rem;">
-                Powered by <strong>Ollama</strong> + <strong>Mistral Large 3</strong> — No external APIs.
+                Powered by <strong>Ollama</strong> + <strong>Mistral Large 3</strong> — Sovereign by design.
             </p>
         </footer>
     </div>
@@ -566,9 +766,123 @@
             return div.innerHTML;
         }
 
-        /* === Version Check === */
+        /* === Constants === */
         const CURRENT_VERSION = '0.2.0';
+        const SYSTEM_PROMPT = 'You are a neutral research assistant for Project Janus. You have access to a local database of historical records. You do not judge, correct, or filter the data. You present findings exactly as they are stored in the archive.';
+        const LS_KEY = 'janus_demo_settings';
 
+        /* === LocalStorage Persistence === */
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem(LS_KEY);
+                return saved ? JSON.parse(saved) : {};
+            } catch (e) { return {}; }
+        }
+
+        function saveSettings(settings) {
+            try {
+                localStorage.setItem(LS_KEY, JSON.stringify(settings));
+            } catch (e) { /* quota exceeded — silent fail */ }
+        }
+
+        function getActiveHost() {
+            const mode = document.querySelector('input[name="connMode"]:checked').value;
+            if (mode === 'cloud') {
+                return document.getElementById('cloudHost').value.trim();
+            }
+            return document.getElementById('ollamaHost').value.trim();
+        }
+
+        function getActiveHeaders() {
+            const mode = document.querySelector('input[name="connMode"]:checked').value;
+            const headers = { 'Content-Type': 'application/json' };
+            if (mode === 'cloud') {
+                const key = document.getElementById('apiKey').value.trim();
+                if (key) headers['Authorization'] = `Bearer ${key}`;
+            }
+            return headers;
+        }
+
+        /* === Connection Status === */
+        const connStatus = document.getElementById('connectionStatus');
+        const connText = document.getElementById('connectionText');
+        const guidance = document.getElementById('ollamaGuidance');
+        const guidanceHost = document.getElementById('guidanceHost');
+
+        function setConnectionState(state, message, modelCount) {
+            connStatus.className = `connection-status ${state}`;
+            connText.textContent = message;
+            if (state === 'disconnected') {
+                guidance.classList.add('visible');
+                guidanceHost.textContent = getActiveHost() || 'localhost:11434';
+            } else {
+                guidance.classList.remove('visible');
+            }
+        }
+
+        /* === Ollama Health Check & Model Discovery === */
+        async function checkOllamaHealth() {
+            const host = getActiveHost();
+            if (!host) {
+                setConnectionState('disconnected', 'No host configured');
+                return false;
+            }
+
+            setConnectionState('checking', 'Checking Ollama...');
+
+            try {
+                const url = host.replace(/\/+$/, '') + '/api/tags';
+                const resp = await fetch(url, {
+                    headers: getActiveHeaders(),
+                    signal: AbortSignal.timeout(5000)
+                });
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const models = (data.models || []).map(m => m.name || m.model || '?');
+
+                setConnectionState('connected', `Connected — ${models.length} model(s)`);
+                populateModels(models);
+                return true;
+
+            } catch (err) {
+                setConnectionState('disconnected', 'Ollama not detected');
+                return false;
+            }
+        }
+
+        function populateModels(models) {
+            const select = document.getElementById('modelSelect');
+            const currentValue = select.value;
+            const savedModel = loadSettings().model;
+
+            select.innerHTML = '';
+
+            if (models.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = 'mistral:latest';
+                opt.textContent = 'mistral:latest (default)';
+                select.appendChild(opt);
+                return;
+            }
+
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
+            });
+
+            // Restore saved or current selection
+            const preferred = savedModel || currentValue;
+            if (preferred && models.includes(preferred)) {
+                select.value = preferred;
+            }
+
+            document.getElementById('modelHelp').textContent = `${models.length} model(s) available`;
+        }
+
+        /* === Version Check === */
         async function checkForUpdates() {
             try {
                 const resp = await fetch(
@@ -612,104 +926,200 @@
             }
         }
 
-        /* === Live Demo === */
-        const form = document.getElementById('demoForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const responseArea = document.getElementById('responseArea');
-        const responseContent = document.getElementById('responseContent');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
-        const thoughtsPanel = document.getElementById('thoughtsPanel');
-        const thoughtsToggle = document.getElementById('thoughtsToggle');
-        const thoughtsContent = document.getElementById('thoughtsContent');
+        /* === Mode Toggle === */
+        function setupModeToggle() {
+            const modeLocal = document.getElementById('modeLocal');
+            const modeCloud = document.getElementById('modeCloud');
+            const localFields = document.getElementById('localFields');
+            const cloudFields = document.getElementById('cloudFields');
+            const labelLocal = document.getElementById('modeLabelLocal');
+            const labelCloud = document.getElementById('modeLabelCloud');
 
-        /* Thoughts Toggle */
-        thoughtsToggle.addEventListener('click', function() {
-            const isOpen = this.classList.toggle('open');
-            this.setAttribute('aria-expanded', isOpen);
-            thoughtsContent.classList.toggle('visible');
-        });
+            function updateMode() {
+                const isCloud = modeCloud.checked;
+                localFields.style.display = isCloud ? 'none' : 'flex';
+                cloudFields.classList.toggle('visible', isCloud);
+                labelLocal.classList.toggle('active', !isCloud);
+                labelCloud.classList.toggle('active', isCloud);
 
-        /* Form Submit */
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
+                // Save preference
+                const s = loadSettings();
+                s.mode = isCloud ? 'cloud' : 'local';
+                saveSettings(s);
 
-            const host = document.getElementById('ollamaHost').value.trim();
-            const prompt = document.getElementById('userPrompt').value.trim();
-
-            if (!host || !prompt) return;
-
-            /* Show response area */
-            responseArea.style.display = 'block';
-            statusDot.className = 'status-dot loading';
-            statusText.textContent = 'Thinking...';
-            responseContent.textContent = '';
-            submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Processing...';
-
-            /* Reset thoughts */
-            thoughtsPanel.style.display = 'block';
-            thoughtsContent.innerHTML = '';
-
-            /* Add thought step */
-            function addThought(label, content) {
-                const step = document.createElement('div');
-                step.className = 'thought-step';
-                const labelSpan = document.createElement('span');
-                labelSpan.className = 'thought-label';
-                labelSpan.appendChild(document.createTextNode(`[${label}]`));
-                step.appendChild(labelSpan);
-                step.appendChild(document.createTextNode(` ${content}`));
-                thoughtsContent.appendChild(step);
+                // Re-check connection with new endpoint
+                checkOllamaHealth();
             }
 
-            addThought('INIT', `Connecting to ${host}...`);
+            modeLocal.addEventListener('change', updateMode);
+            modeCloud.addEventListener('change', updateMode);
+        }
 
-            try {
-                const apiUrl = host.replace(/\/+$/, '') + '/api/generate';
+        /* === Live Demo === */
+        function setupDemoForm() {
+            const form = document.getElementById('demoForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const responseArea = document.getElementById('responseArea');
+            const responseContent = document.getElementById('responseContent');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const thoughtsPanel = document.getElementById('thoughtsPanel');
+            const thoughtsToggle = document.getElementById('thoughtsToggle');
+            const thoughtsContent = document.getElementById('thoughtsContent');
 
-                addThought('REQUEST', `POST ${apiUrl}`);
-                addThought('MODEL', 'mistral:latest');
-                addThought('PROMPT', prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''));
+            /* Thoughts Toggle */
+            thoughtsToggle.addEventListener('click', function() {
+                const isOpen = this.classList.toggle('open');
+                this.setAttribute('aria-expanded', isOpen);
+                thoughtsContent.classList.toggle('visible');
+            });
 
-                const resp = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model: 'mistral:latest',
-                        prompt: prompt,
-                        stream: false
-                    })
-                });
+            /* Form Submit */
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
 
-                if (!resp.ok) {
-                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                const host = getActiveHost();
+                const model = document.getElementById('modelSelect').value;
+                const prompt = document.getElementById('userPrompt').value.trim();
+
+                if (!host || !prompt) return;
+
+                /* Save current settings */
+                const s = loadSettings();
+                s.model = model;
+                s.localHost = document.getElementById('ollamaHost').value.trim();
+                s.cloudHost = document.getElementById('cloudHost').value.trim();
+                saveSettings(s);
+
+                /* Show response area */
+                responseArea.style.display = 'block';
+                statusDot.className = 'status-dot loading';
+                statusText.textContent = 'Thinking...';
+                responseContent.textContent = '';
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Processing...';
+
+                /* Reset thoughts */
+                thoughtsPanel.style.display = 'block';
+                thoughtsContent.innerHTML = '';
+
+                /* Add thought step */
+                function addThought(label, content) {
+                    const step = document.createElement('div');
+                    step.className = 'thought-step';
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'thought-label';
+                    labelSpan.appendChild(document.createTextNode(`[${label}]`));
+                    step.appendChild(labelSpan);
+                    step.appendChild(document.createTextNode(` ${content}`));
+                    thoughtsContent.appendChild(step);
                 }
 
-                const data = await resp.json();
+                addThought('INIT', `Connecting to ${host}...`);
+                addThought('MODE', document.querySelector('input[name="connMode"]:checked').value.toUpperCase());
 
-                addThought('TOKENS', `eval_count: ${data.eval_count || 'N/A'}, eval_duration: ${data.eval_duration ? (data.eval_duration / 1e9).toFixed(2) + 's' : 'N/A'}`);
-                addThought('COMPLETE', 'Response received successfully');
+                try {
+                    const apiUrl = host.replace(/\/+$/, '') + '/api/chat';
 
-                statusDot.className = 'status-dot';
-                statusText.textContent = 'Complete';
-                responseContent.textContent = data.response || 'No response content';
+                    addThought('REQUEST', `POST ${apiUrl}`);
+                    addThought('MODEL', model);
+                    addThought('PROMPT', prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''));
 
-            } catch (err) {
-                addThought('ERROR', err.message);
-                statusDot.className = 'status-dot error';
-                statusText.textContent = 'Error';
-                responseContent.textContent = `Error: ${err.message}\n\nMake sure Ollama is running at the specified host.\nStart with: ollama serve`;
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = '⚡ Send to Brain';
+                    const resp = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: getActiveHeaders(),
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                { role: 'system', content: SYSTEM_PROMPT },
+                                { role: 'user', content: prompt }
+                            ],
+                            stream: false
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                    }
+
+                    const data = await resp.json();
+                    const answer = data.message ? data.message.content : (data.response || 'No response content');
+
+                    addThought('TOKENS', `eval_count: ${data.eval_count || 'N/A'}, eval_duration: ${data.eval_duration ? (data.eval_duration / 1e9).toFixed(2) + 's' : 'N/A'}`);
+                    addThought('COMPLETE', 'Response received successfully');
+
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'Complete';
+                    responseContent.textContent = answer;
+
+                } catch (err) {
+                    addThought('ERROR', err.message);
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = 'Error';
+                    responseContent.textContent = `Error: ${err.message}\n\nMake sure Ollama is running at the specified host.\nStart with: ollama serve\n\nOr switch to Cloud API mode if you have a remote server.`;
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '⚡ Send to Brain';
+                }
+            });
+        }
+
+        /* === Guidance Panel Actions === */
+        function setupGuidanceActions() {
+            document.getElementById('retryConnectionBtn').addEventListener('click', function() {
+                checkOllamaHealth();
+            });
+
+            document.getElementById('switchToCloudBtn').addEventListener('click', function() {
+                document.getElementById('modeCloud').checked = true;
+                document.getElementById('modeCloud').dispatchEvent(new Event('change'));
+                guidance.classList.remove('visible');
+            });
+        }
+
+        /* === Save Settings on Input Change === */
+        function setupAutoSave() {
+            const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+            const saveAndCheck = debounce(() => {
+                const s = loadSettings();
+                s.localHost = document.getElementById('ollamaHost').value.trim();
+                s.cloudHost = document.getElementById('cloudHost').value.trim();
+                s.model = document.getElementById('modelSelect').value;
+                saveSettings(s);
+                checkOllamaHealth();
+            }, 800);
+
+            document.getElementById('ollamaHost').addEventListener('input', saveAndCheck);
+            document.getElementById('cloudHost').addEventListener('input', saveAndCheck);
+            document.getElementById('modelSelect').addEventListener('change', () => {
+                const s = loadSettings();
+                s.model = document.getElementById('modelSelect').value;
+                saveSettings(s);
+            });
+        }
+
+        /* === Restore Saved Settings === */
+        function restoreSettings() {
+            const s = loadSettings();
+            if (s.localHost) document.getElementById('ollamaHost').value = s.localHost;
+            if (s.cloudHost) document.getElementById('cloudHost').value = s.cloudHost;
+            if (s.mode === 'cloud') {
+                document.getElementById('modeCloud').checked = true;
+                document.getElementById('modeCloud').dispatchEvent(new Event('change'));
             }
-        });
+        }
 
         /* === Init === */
         document.addEventListener('DOMContentLoaded', function() {
+            restoreSettings();
+            setupModeToggle();
+            setupDemoForm();
+            setupGuidanceActions();
+            setupAutoSave();
             loadLatestRun();
             checkForUpdates();
+            checkOllamaHealth();
         });
     </script>
 </body>

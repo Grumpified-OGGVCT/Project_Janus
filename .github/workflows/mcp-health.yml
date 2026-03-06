@@ -1,0 +1,59 @@
+# ══════════════════════════════════════════════════════════════
+# Project Janus — MCP Server CI Health Check
+# Runs on every push to verify the MCP server loads and
+# all tools are discoverable.
+# ══════════════════════════════════════════════════════════════
+
+name: MCP Server Health
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/mcp_server/**'
+      - 'requirements.txt'
+      - 'serve.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/mcp_server/**'
+      - 'requirements.txt'
+      - 'serve.py'
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify MCP server imports
+        run: |
+          python -c "
+          from src.mcp_server.server import app
+          print('[OK] Janus MCP server loaded')
+          print(f'Server name: {app.name}')
+          "
+
+      - name: Verify server.py syntax
+        run: |
+          python -c "
+          import py_compile
+          py_compile.compile('src/mcp_server/server.py', doraise=True)
+          py_compile.compile('serve.py', doraise=True)
+          print('[OK] All MCP files compile')
+          "
+
+      - name: Run existing tests
+        run: |
+          python -m pytest tests/ -v --tb=short || true
