@@ -39,16 +39,28 @@ def require_ollama():
     if not OLLAMA_HOST:
         pytest.skip("OLLAMA_HOST not set — skipping live API tests")
     try:
-        resp = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        resp = requests.get(
+            f"{OLLAMA_HOST}/api/tags",
+            timeout=1,
+            headers=demo._build_headers()
+        )
         if resp.status_code != 200:
             pytest.skip(f"Ollama server returned status {resp.status_code} — skipping live API tests")
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         pytest.skip(f"Ollama server not reachable ({e}) — skipping live API tests")
 
 
 # ---------------------------------------------------------------------------
 # Structural / static tests (no API call needed)
 # ---------------------------------------------------------------------------
+
+def test_normalize_host():
+    """Unit tests for host scheme normalization."""
+    assert demo._normalize_host("0.0.0.0:11434") == "http://0.0.0.0:11434"
+    assert demo._normalize_host("http://localhost:11434") == "http://localhost:11434"
+    assert demo._normalize_host("https://example.com") == "https://example.com"
+    assert demo._normalize_host("127.0.0.1/") == "http://127.0.0.1"
+    assert demo._normalize_host("") == ""
 
 def test_demo_does_not_use_ollama_library():
     """Verify the demo no longer imports or uses the ollama Python library."""

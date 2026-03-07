@@ -11,6 +11,29 @@
 
 ---
 
+### The March 2026 Cloud Model Pipeline (Infinite RAG)
+To achieve true "Infinite RAG" over your entire codebase and archival history, Project Janus orchestrates a suite of specialized local/cloud proxy models via Ollama:
+
+1. **`qwen3-coder-next`** - Generates high-quality, code-aware vector embeddings (understands symbols, signatures, docstrings).
+2. **`minimax-m2.5`** - Fast, on-device reranking to order the candidates returned by the vector search cheaply and with low latency.
+3. **`gemini-3-flash-preview`** - Rapid context compression. When graph walks overflow the context window, this model shrinks chunks to two-sentence summaries.
+4. **`devstral-2`** - The 123B parameter heavy-lifter. Provides the strongest multi-file reasoning and tool-use to deliver the final answer based on the distilled graph.
+
+*(Optional side-task models like `qwen3.5`, `glm-5`, or `nemotron-3-nano` can also be pulled if needed).*
+
+## 🌐 The March 2026 Cloud Model Pipeline (Infinite RAG)
+To achieve true "Infinite RAG" over your entire codebase and archival history, Project Janus is designed to orchestrate a suite of specialized local/cloud proxy models via Ollama.
+
+**Model-by-model choice:**
+1. **`qwen3-coder-next`** - Code-aware embeddings optimized for agentic workflows. Turns function/class sources into high-quality vectors that understand symbols, signatures, and docstrings.
+2. **`minimax-m2.5`** - Fast, on-device reranking to order the candidates returned by the vector search cheaply and with low latency.
+3. **`gemini-3-flash-preview`** - Context compression. When the graph walk overflows the context window, this model shrinks chunks to two-sentence summaries.
+4. **`devstral-2`** - The 123B parameter heavy-lifter. Provides the strongest multi-file reasoning and tool-use to deliver the final answer based on the distilled graph.
+
+*(Optional general-purpose multimodal models: `qwen3.5`, `glm-5`, or `nemotron-3-nano` can also be pulled if needed for side tasks).*
+
+The architecture leverages **Memory-MCP** (`@modelcontextprotocol/server-memory`) and **LanceDB** to explicitly map entities and relations across the repository, allowing `devstral-2` to walk the knowledge graph infinitely during retrieval.
+
 ## Architecture
 
 ```
@@ -26,7 +49,7 @@ Harvester  /  Site Cloner (field agents)
 ```
 
 ### Infinite RAG & O(1) Context Bounding
-Project Janus employs an "Infinite RAG" system using the Context7 protocol via the `deep_retrieve_context7` MCP tool. This allows the agent to semantically search vast historical archives dynamically without overflowing the context window.
+Project Janus employs an "Infinite RAG" system using the Context7 protocol via the `deep_recall` MCP tool. This allows the agent to semantically search vast historical archives dynamically without overflowing the context window.
 It enforces O(1) Context Bounding (the Silver Hat protocol), ensuring the agent's prompt never grows infinitely: the context is strictly bounded to a lightweight workspace snapshot and only the last ~10 actions, while the heavy lifting is handled by massive vector retrieval behind the scenes.
 
 | Component | File | Role |
@@ -81,7 +104,7 @@ CLONE_MAX_PAGES = 1000
 - **Temporal versioning** — `live`, `wayback_oldest`, `wayback_recent` captures stored side-by-side
 - **Immutable vault** — SHA-256 content hashes; MCP server always opens DB in `mode=ro`
 - **Semantic search** — `nomic-embed-text` embeddings + ChromaDB, entirely local
-- **Infinite RAG** — Context7 deep retrieval via `deep_retrieve_context7` allowing infinite scalability with bounded memory
+- **Infinite RAG** — Context7 deep retrieval via `deep_recall` allowing infinite scalability with bounded memory
 - **100% local AI** — zero OpenAI / Anthropic; all inference via Ollama
 - **Native tool-calling** — Mistral Large 3 function-calling drives the MCP tool loop
 - **CI-tested** — unit tests run on every push via GitHub Actions
