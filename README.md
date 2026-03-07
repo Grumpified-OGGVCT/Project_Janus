@@ -22,7 +22,6 @@ To achieve true "Infinite RAG" over your entire codebase and archival history, P
 *(Optional side-task models like `qwen3.5`, `glm-5`, or `nemotron-3-nano` can also be pulled if needed).*
 
 ## 🌐 The March 2026 Cloud Model Pipeline (Infinite RAG)
-To achieve true "Infinite RAG" over your entire codebase and archival history, Project Janus is designed to orchestrate a suite of specialized local/cloud proxy models via Ollama.
 
 **Model-by-model choice:**
 1. **`qwen3-coder-next`** - Code-aware embeddings optimized for agentic workflows. Turns function/class sources into high-quality vectors that understand symbols, signatures, and docstrings.
@@ -36,7 +35,6 @@ The architecture leverages **Memory-MCP** (`@modelcontextprotocol/server-memory`
 
 ## 🌐 The Code-Awareness Service (Sovereign OS Integration)
 
-Project Janus is not just a standalone script—it acts as the cognitive core inside a broader **Sovereign OS**. The Infinite RAG engine we just wired into the bytecode VM (`MEMORY_STORE` / `MEMORY_RECALL` with confidence tracking, decay, correction chains, hot/warm/cold tiers) is the exact same abstraction that the Code-Awareness Service's graph-walk-and-rerank pipeline uses.
 
 The integration path is clear:
 `HLF compiler → bytecode VM → Infinite RAG engine → Janus Code-Awareness API (Port 9345) → Ollama Cloud models.`
@@ -137,8 +135,7 @@ CLONE_MAX_PAGES = 1000
 - **Full-site Markdown clone** — entire domain mirrored as linked `.md` files; `_index.md` navigation tree auto-generated
 - **Temporal versioning** — `live`, `wayback_oldest`, `wayback_recent` captures stored side-by-side
 - **Immutable vault** — SHA-256 content hashes; MCP server always opens DB in `mode=ro`
-- **Semantic search** — `nomic-embed-text` embeddings + ChromaDB, entirely local
-- **Infinite RAG** — Context7 deep retrieval via `deep_recall` allowing infinite scalability with bounded memory
+- **Infinite RAG** — Context7 deep retrieval via `deep_retrieve_context7` allowing infinite scalability with bounded memory
 - **100% local AI** — zero OpenAI / Anthropic; all inference via Ollama
 - **Native tool-calling** — Mistral Large 3 function-calling drives the MCP tool loop
 - **CI-tested** — unit tests run on every push via GitHub Actions

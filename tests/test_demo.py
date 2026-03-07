@@ -47,6 +47,14 @@ def require_ollama():
         if resp.status_code != 200:
             pytest.skip(f"Ollama server returned status {resp.status_code} — skipping live API tests")
     except requests.exceptions.RequestException as e:
+        resp = requests.get(
+            f"{OLLAMA_HOST}/api/tags",
+            timeout=1,
+            headers=demo._build_headers()
+        )
+        if resp.status_code != 200:
+            pytest.skip(f"Ollama server returned status {resp.status_code} — skipping live API tests")
+    except requests.exceptions.RequestException as e:
         pytest.skip(f"Ollama server not reachable ({e}) — skipping live API tests")
 
 

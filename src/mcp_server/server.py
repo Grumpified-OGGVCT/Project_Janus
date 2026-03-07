@@ -1,6 +1,5 @@
 """
 Project Janus — Multi-Transport MCP Knowledge Server
-=====================================================
 Sovereign Archival Intelligence
 
 Transports:
@@ -65,6 +64,7 @@ CONFIG_PATH = os.path.join(PROJECT_ROOT, ".janus_config.json")
 DEFAULT_PORT = 8108
 USER_AGENT = "Janus/1.0 (Sovereign Archival Intelligence)"
 _http_client = httpx.Client(timeout=20, follow_redirects=True, limits=httpx.Limits(max_keepalive_connections=5, max_connections=10))
+_http_client = httpx.Client(timeout=20, follow_redirects=True, limits=httpx.Limits(max_keepalive_connections=5, max_connections=10))
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +108,7 @@ def _get_embedder():
     global _embedder
     if _embedder is None and EMBEDDINGS_AVAILABLE:
         _embedder = SentenceTransformer("nomic-embed-text")
+        _embedder = SentenceTransformer("nomic-embed-text")
     return _embedder
 
 
@@ -116,6 +117,7 @@ def _get_collection():
     global _collection
     if _collection is None and EMBEDDINGS_AVAILABLE:
         client = chromadb.PersistentClient(path=CHROMA_PATH)
+        _collection = client.get_or_create_collection(name=_active_collection_name)
         _collection = client.get_or_create_collection(name=_active_collection_name)
     return _collection
 
@@ -461,7 +463,6 @@ def save_knowledge_graph(filename: str = "knowledge_graph.json", topic: Optional
         return f"Error saving graph: {e}"
 
 @app.tool()
-@app.tool()
 def add_knowledge_node(name: str, type: str, content: str) -> str:
     """Explicitly add a specific knowledge node (entity) to the graph. (Memory MCP Style)
 
@@ -545,6 +546,8 @@ def index_local_codebase() -> str:
 
     return f"Successfully indexed codebase: {indexed_files} Python files across {total_chunks} chunks."
 
+
+
 @app.tool()
 def vault_stats() -> str:
     """Get statistics about the vault: total threads, posts, sources,
@@ -621,6 +624,7 @@ def web_search(
     if DDGS_AVAILABLE:
         try:
             with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results, timelimit=time_range))
                 results = list(ddgs.text(query, max_results=max_results, timelimit=time_range))
             if not results:
                 return f"No web results for: '{query}'"
@@ -977,6 +981,11 @@ def autonomous_research_loop(topic: str, breadth: int = 2, depth: int = 1) -> st
     output += f"Use auto_search('{topic}', strategy='infinite_rag') or deep_recall('{topic}') to synthesize the combined knowledge."
     return output
 
+
+    return f"Invalid strategy: {strategy}. Use 'auto', 'vault_only', 'web_only', or 'infinite_rag'."
+
+
+
 @app.tool()
 def extract_page(url: str, max_chars: int = 8000) -> str:
     """Extract clean readable text from any URL. Strips navigation, scripts,
@@ -1119,6 +1128,9 @@ def crawl_and_index(url: str, depth: int = 1, follow_same_domain: bool = True) -
                         to_visit.append((full_url, curr_depth + 1))
             except Exception:
                 pass
+
+    return f"Crawled {url} at depth {depth}. Ingested {ingested_count} new pages. Skipped {skipped_count} already indexed pages."
+
 
     return f"Crawled {url} at depth {depth}. Ingested {ingested_count} new pages. Skipped {skipped_count} already indexed pages."
 

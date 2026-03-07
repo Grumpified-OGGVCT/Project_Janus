@@ -21,6 +21,8 @@ class Harvester:
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
         self.collection = self.chroma_client.get_or_create_collection(name="stolen_history_nomic")
         self.embedder = SentenceTransformer('nomic-embed-text')
+        self.collection = self.chroma_client.get_or_create_collection(name="stolen_history_nomic")
+        self.embedder = SentenceTransformer('nomic-embed-text')
 
         self.session = requests.Session()
         self.session.headers.update({

@@ -128,6 +128,7 @@ def test_extract_page_returns_content(monkeypatch):
     mock_response.raise_for_status = MagicMock()
 
     monkeypatch.setattr(srv._http_client, 'get', lambda *args, **kwargs: mock_response)
+    monkeypatch.setattr(srv._http_client, 'get', lambda *args, **kwargs: mock_response)
 
     result = srv.extract_page(url="https://example.com")
 

@@ -52,6 +52,9 @@ def _normalize_host(host: str) -> str:
 def run_query(host: str) -> str:
     """Call the Ollama /api/chat endpoint and return the assistant message text."""
     url = f"{_normalize_host(host)}/api/chat"
+def run_query(host: str) -> str:
+    """Call the Ollama /api/chat endpoint and return the assistant message text."""
+    url = f"{_normalize_host(host)}/api/chat"
     payload = {
         "model": MODEL,
         "messages": [
@@ -81,6 +84,7 @@ def main():
 
     output = {
         "model": MODEL,
+        "ollama_host": raw_host,
         "ollama_host": raw_host,
         "query": DEMO_QUERY,
         "timestamp": datetime.now(timezone.utc).isoformat(),
