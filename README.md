@@ -32,7 +32,7 @@ It enforces O(1) Context Bounding (the Silver Hat protocol), ensuring the agent'
 | Component | File | Role |
 |-----------|------|------|
 | Brain | `run_agent.py` | Mistral Large 3 via Ollama; drives tool-call loop |
-| Librarian | `src/mcp_server/server.py` | MCP tools: `search_archives`, `view_thread_history`, `search_with_contents`, `auto_search` |
+| Librarian | `src/mcp_server/server.py` | MCP tools: `search_archives`, `view_thread_history`, `search_with_contents`, `auto_search`, `crawl_and_index`, collection tools |
 | Thread Harvester | `src/harvester/engine.py` | Per-thread crawl + Wayback CDX snapshots → `vault.db` |
 | **Site Cloner** | `src/harvester/site_cloner.py` | **Full-domain Markdown mirror with rewritten links** |
 | Vault | `src/vault/schema.sql` | SQLite schema with temporal versioning |

@@ -64,6 +64,7 @@ CHROMA_PATH = os.path.join(DATA_DIR, "chroma_db")
 CONFIG_PATH = os.path.join(PROJECT_ROOT, ".janus_config.json")
 DEFAULT_PORT = 8108
 USER_AGENT = "Janus/1.0 (Sovereign Archival Intelligence)"
+_http_client = httpx.Client(timeout=20, follow_redirects=True, limits=httpx.Limits(max_keepalive_connections=5, max_connections=10))
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +116,7 @@ def _get_collection():
     global _collection
     if _collection is None and EMBEDDINGS_AVAILABLE:
         client = chromadb.PersistentClient(path=CHROMA_PATH)
-        _collection = client.get_or_create_collection(name="stolen_history_nomic")
+        _collection = client.get_or_create_collection(name=_active_collection_name)
     return _collection
 
 
@@ -139,7 +140,49 @@ task_state = {
 #  VAULT TOOLS — Local archival search and analysis
 # ═══════════════════════════════════════════════════════════════
 
+
+_active_collection_name = "stolen_history_nomic"
+
 @app.tool()
+def list_collections() -> str:
+    """List all available local ChromaDB collections (Websets)."""
+    if not EMBEDDINGS_AVAILABLE:
+        return "ChromaDB not available."
+    try:
+        client = chromadb.PersistentClient(path=CHROMA_PATH)
+        collections = client.list_collections()
+        return f"Collections: {', '.join([c.name for c in collections])}\nActive: {_active_collection_name}"
+    except Exception as e:
+        return f"Error listing collections: {e}"
+
+@app.tool()
+def switch_collection(name: str) -> str:
+    """Switch the active ChromaDB collection used for search and ingest."""
+    global _active_collection_name, _collection
+    if not EMBEDDINGS_AVAILABLE:
+        return "ChromaDB not available."
+    try:
+        client = chromadb.PersistentClient(path=CHROMA_PATH)
+        # Verify it exists
+        client.get_collection(name=name)
+        _active_collection_name = name
+        _collection = None # Force reload
+        return f"Switched active collection to '{name}'."
+    except Exception as e:
+        return f"Collection '{name}' not found or error: {e}"
+
+@app.tool()
+def create_collection(name: str) -> str:
+    """Create a new isolated ChromaDB collection for a specific research topic."""
+    if not EMBEDDINGS_AVAILABLE:
+        return "ChromaDB not available."
+    try:
+        client = chromadb.PersistentClient(path=CHROMA_PATH)
+        client.get_or_create_collection(name=name)
+        return f"Created collection '{name}'. Use switch_collection to use it."
+    except Exception as e:
+        return f"Error creating collection: {e}"
+
 def search_vault(query: str, n_results: int = 5) -> str:
     """Semantic search across the local Janus vault. Uses embedding similarity
     to find archival content matching a concept, name, or topic.
@@ -281,7 +324,7 @@ def vault_similar(text_or_url: str, n_results: int = 5) -> str:
     # If it looks like a URL, fetch and extract its content first
     if text_or_url.startswith(("http://", "https://")):
         try:
-            resp = httpx.get(
+            resp = _http_client.get(
                 text_or_url, timeout=15, follow_redirects=True,
                 headers={"User-Agent": USER_AGENT},
             )
@@ -360,20 +403,33 @@ def vault_stats() -> str:
 # ═══════════════════════════════════════════════════════════════
 
 @app.tool()
-def web_search(query: str, max_results: int = 10) -> str:
+def web_search(
+    query: str,
+    max_results: int = 10,
+    include_domains: list[str] = None,
+    exclude_domains: list[str] = None,
+    time_range: str = None
+) -> str:
     """Search the public web using DuckDuckGo (no API key needed).
     Returns structured results with title, URL, and snippet.
 
     Args:
         query: The search query
         max_results: Maximum results to return (default 10, max 25)
+        include_domains: List of domains to whitelist (e.g. ['arxiv.org'])
+        exclude_domains: List of domains to blacklist
+        time_range: 'd' (day), 'w' (week), 'm' (month), 'y' (year)
     """
+    if include_domains:
+        query += " " + " OR ".join(f"site:{d}" for d in include_domains)
+    if exclude_domains:
+        query += " " + " ".join(f"-site:{d}" for d in exclude_domains)
     max_results = min(max_results, 25)
 
     if DDGS_AVAILABLE:
         try:
             with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=max_results))
+                results = list(ddgs.text(query, max_results=max_results, timelimit=time_range))
             if not results:
                 return f"No web results for: '{query}'"
 
@@ -395,7 +451,7 @@ def web_search(query: str, max_results: int = 10) -> str:
 def _web_search_html(query: str, max_results: int = 10) -> str:
     """Fallback web search using httpx + DuckDuckGo HTML endpoint."""
     try:
-        resp = httpx.get(
+        resp = _http_client.get(
             "https://html.duckduckgo.com/html/",
             params={"q": query},
             timeout=10,
@@ -480,7 +536,15 @@ def advanced_search(
 
 
 @app.tool()
-def search_with_contents(query: str, extract_text: bool = True, max_results: int = 3) -> str:
+def search_with_contents(
+    query: str,
+    extract_text: bool = True,
+    max_results: int = 3,
+    include_domains: list[str] = None,
+    exclude_domains: list[str] = None,
+    time_range: str = None,
+    summarize: bool = False
+) -> str:
     """Combined web search and content extraction.
     Searches the web and automatically extracts the full text of the top results.
 
@@ -488,7 +552,15 @@ def search_with_contents(query: str, extract_text: bool = True, max_results: int
         query: The search query
         extract_text: Whether to extract full page text (default True)
         max_results: Maximum results to fetch and extract (default 3, max 5)
+        include_domains: List of domains to whitelist (e.g. ['arxiv.org'])
+        exclude_domains: List of domains to blacklist
+        time_range: 'd' (day), 'w' (week), 'm' (month), 'y' (year)
+        summarize: If True, uses summarize_text to shorten the content.
     """
+    if include_domains:
+        query += " " + " OR ".join(f"site:{d}" for d in include_domains)
+    if exclude_domains:
+        query += " " + " ".join(f"-site:{d}" for d in exclude_domains)
     max_results = min(max_results, 5)
 
     urls = []
@@ -498,7 +570,7 @@ def search_with_contents(query: str, extract_text: bool = True, max_results: int
         try:
             from duckduckgo_search import DDGS
             with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=max_results))
+                results = list(ddgs.text(query, max_results=max_results, timelimit=time_range))
             for r in results:
                 url = r.get('href', r.get('link'))
                 if url:
@@ -508,7 +580,7 @@ def search_with_contents(query: str, extract_text: bool = True, max_results: int
     else:
         # Fallback HTML search
         try:
-            resp = httpx.get(
+            resp = _http_client.get(
                 "https://html.duckduckgo.com/html/",
                 params={"q": query},
                 timeout=10,
@@ -542,7 +614,9 @@ def search_with_contents(query: str, extract_text: bool = True, max_results: int
             continue
 
         # Extract the page content sequentially (parallel requires async/threads which adds complexity)
-        content_text = extract_page(url, max_chars=4000)
+        content_text = extract_page(url, max_chars=10000)
+        if summarize:
+            content_text = summarize_text(content_text, max_sentences=5)
         output += f"--- Extracted Content ---\n{content_text}\n"
         output += f"-------------------------\n\n"
 
@@ -554,10 +628,13 @@ def auto_search(query: str, strategy: str = "auto") -> str:
 
     Args:
         query: The search query
-        strategy: 'auto' (decides based on vault hits), 'vault_only', or 'web_only'
+        strategy: 'auto' (decides based on vault hits), 'vault_only', 'web_only', or 'infinite_rag'
     """
     if strategy == "vault_only":
         return search_vault(query, n_results=5)
+
+    if strategy == "infinite_rag":
+        return deep_retrieve_context7(query, n_results=10)
 
     if strategy == "web_only":
         return web_search(query, max_results=5)
@@ -576,7 +653,7 @@ def auto_search(query: str, strategy: str = "auto") -> str:
         output = f"─── AUTO SEARCH: Used Web (Vault was empty) ───\n{web_res}\n"
         return output
 
-    return f"Invalid strategy: {strategy}. Use 'auto', 'vault_only', or 'web_only'."
+    return f"Invalid strategy: {strategy}. Use 'auto', 'vault_only', 'web_only', or 'infinite_rag'."
 
 @app.tool()
 def extract_page(url: str, max_chars: int = 8000) -> str:
@@ -588,7 +665,7 @@ def extract_page(url: str, max_chars: int = 8000) -> str:
         max_chars: Maximum characters to return (default 8000)
     """
     try:
-        resp = httpx.get(
+        resp = _http_client.get(
             url, timeout=20, follow_redirects=True,
             headers={"User-Agent": USER_AGENT},
         )
@@ -654,6 +731,75 @@ def extract_page(url: str, max_chars: int = 8000) -> str:
 
 
 @app.tool()
+def crawl_and_index(url: str, depth: int = 1, follow_same_domain: bool = True) -> str:
+    """Deep recursive crawl of a site to ingest into the active webset (collection).
+    Skips already indexed URLs based on ChromaDB metadata checks.
+
+    Args:
+        url: The starting URL
+        depth: How many levels of links to follow (max 2)
+        follow_same_domain: Restrict to links on the same domain
+    """
+    depth = min(depth, 2)
+    collection = _get_collection()
+    if not collection:
+        return "⚠ Ingestion unavailable — embeddings not loaded."
+
+    try:
+        from urllib.parse import urlparse, urljoin
+    except ImportError:
+        pass
+
+    base_domain = urlparse(url).netloc
+
+    visited = set()
+    to_visit = [(url, 0)]
+
+    ingested_count = 0
+    skipped_count = 0
+
+    while to_visit:
+        curr_url, curr_depth = to_visit.pop(0)
+
+        if curr_url in visited:
+            continue
+        visited.add(curr_url)
+
+        # Check if already indexed
+        try:
+            url_hash = f"ingest_{hashlib.md5(curr_url.encode()).hexdigest()[:12]}_0"
+            existing = collection.get(ids=[url_hash])
+            if existing and existing.get('ids') and len(existing['ids']) > 0:
+                skipped_count += 1
+                continue
+        except Exception:
+            pass
+
+        # Call the actual ingest function for this page
+        ingest_res = ingest_url(curr_url, depth=1)
+        if "Failed" not in ingest_res and "unavailable" not in ingest_res:
+            ingested_count += 1
+
+        if curr_depth < depth:
+            try:
+                resp = _http_client.get(
+                    curr_url, timeout=10, follow_redirects=True,
+                    headers={"User-Agent": USER_AGENT},
+                )
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=True):
+                    href = a["href"]
+                    full_url = urljoin(curr_url, href)
+                    if full_url.startswith("http"):
+                        link_domain = urlparse(full_url).netloc
+                        if follow_same_domain and link_domain != base_domain:
+                            continue
+                        to_visit.append((full_url, curr_depth + 1))
+            except Exception:
+                pass
+
+    return f"Crawled {url} at depth {depth}. Ingested {ingested_count} new pages. Skipped {skipped_count} already indexed pages."
+
 def ingest_url(
     url: str,
     depth: int = 1,
@@ -676,7 +822,7 @@ def ingest_url(
 
     # Step 1: Fetch the page
     try:
-        resp = httpx.get(
+        resp = _http_client.get(
             url, timeout=20, follow_redirects=True,
             headers={"User-Agent": USER_AGENT},
         )
@@ -705,7 +851,7 @@ def ingest_url(
                 child_urls.add(href)
         for child_url in child_urls:
             try:
-                cr = httpx.get(
+                cr = _http_client.get(
                     child_url, timeout=10, follow_redirects=True,
                     headers={"User-Agent": USER_AGENT},
                 )
