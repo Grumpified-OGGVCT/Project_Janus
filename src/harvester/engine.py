@@ -19,8 +19,8 @@ class Harvester:
         # Init ChromaDB for Infinite RAG
         chroma_path = os.path.join(os.path.dirname(db_path), "chroma_db")
         self.chroma_client = chromadb.PersistentClient(path=chroma_path)
-        self.collection = self.chroma_client.get_or_create_collection(name="stolen_history")
-        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.collection = self.chroma_client.get_or_create_collection(name="stolen_history_nomic")
+        self.embedder = SentenceTransformer('nomic-embed-text')
 
         self.session = requests.Session()
         self.session.headers.update({
