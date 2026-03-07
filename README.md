@@ -34,6 +34,40 @@ To achieve true "Infinite RAG" over your entire codebase and archival history, P
 
 The architecture leverages **Memory-MCP** (`@modelcontextprotocol/server-memory`) and **LanceDB** to explicitly map entities and relations across the repository, allowing `devstral-2` to walk the knowledge graph infinitely during retrieval.
 
+## 🌐 The Code-Awareness Service (Sovereign OS Integration)
+
+Project Janus is not just a standalone script—it acts as the cognitive core inside a broader **Sovereign OS**. The Infinite RAG engine we just wired into the bytecode VM (`MEMORY_STORE` / `MEMORY_RECALL` with confidence tracking, decay, correction chains, hot/warm/cold tiers) is the exact same abstraction that the Code-Awareness Service's graph-walk-and-rerank pipeline uses.
+
+The integration path is clear:
+`HLF compiler → bytecode VM → Infinite RAG engine → Janus Code-Awareness API (Port 9345) → Ollama Cloud models.`
+One sovereign pipeline from `.hlf` source to enterprise-grade codebase intelligence.
+
+### 📌 1️⃣ Exact Cloud Model Pipeline (March 2026 Catalogue)
+To achieve true "Infinite RAG", Janus orchestrates a suite of specialized local/cloud proxy models via Ollama:
+
+1. **`embeddinggemma`** - Dense embedding model from Google. Generates high-quality vectors for every symbol.
+2. **`minimax-m2.5:cloud`** - Fast, on-device reranking to order the candidates returned by the vector search cheaply and with low latency.
+3. **`gemini-3-flash-preview:cloud`** - Context compression. When the graph walk overflows the context window, this model shrinks chunks to two-sentence summaries.
+4. **`devstral-2:123b-cloud`** - The 123B parameter heavy-lifter. Provides the strongest multi-file reasoning and tool-use to deliver the final answer based on the distilled graph.
+
+### 📚 2️⃣ Persistent Knowledge Graph (Memory-MCP & LanceDB)
+The architecture leverages **Memory-MCP** (`@modelcontextprotocol/server-memory`) and **LanceDB** to explicitly map entities and relations across the repository, allowing `devstral-2` to walk the knowledge graph infinitely during retrieval.
+
+* **Entities / Relations / Observations:** Stored locally in a JSONL file (`.claude/memory.json`).
+* **Vector Store:** LanceDB stores the `embeddinggemma` vectors on-disk.
+
+### ⚙️ 3️⃣ RAM & Resource Mitigation (Stalemate Prevention)
+A massive repository will consume **Disk Space, NOT RAM**, while idle. However, to prevent a deep "Infinite RAG" graph walk from causing RAM spikes or out-of-memory (OOM) stalemates during traversal:
+
+* **On-Disk Memory Mapping:** LanceDB utilizes Apache Arrow to memory-map vectors directly from disk, ensuring the DB growth doesn't consume active RAM until a specific chunk is accessed.
+* **Bounded BFS Expansion:** The `expand_graph` function enforces a strict `depth` and `max_nodes_per_hop` limit. It only pulls the immediate explicit edges (imports, calls, tests), preventing an exponential explosion of nodes in memory.
+* **Hot/Warm/Cold Tiering:** Active memories requested via `MEMORY_RECALL` bytecode are cached in Hot RAM. Older archives decay to Cold disk storage.
+* **Aggressive Context Compression:** Before the final context is handed to the 123B `devstral-2` model, the ultra-fast `gemini-3-flash-preview` model shrinks any overflow chunks into dense 2-sentence summaries. This guarantees the context window is respected without losing the semantic map.
+
+### 🐳 4️⃣ Deployment (Port 9345)
+The entire Code-Awareness Service runs as a FastAPI wrapper inside Docker, exposing the API on custom port **9345**. The internal Ollama daemon remains on `11434`. Client SDKs (Python/Node) default to `http://localhost:9345` to interface seamlessly with the OS bridge.
+
+
 ## Architecture
 
 ```
