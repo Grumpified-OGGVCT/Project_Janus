@@ -106,7 +106,7 @@ def _get_embedder():
     """Lazy-load the sentence transformer model for embeddings."""
     global _embedder
     if _embedder is None and EMBEDDINGS_AVAILABLE:
-        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        _embedder = SentenceTransformer("nomic-embed-text")
     return _embedder
 
 
@@ -115,7 +115,7 @@ def _get_collection():
     global _collection
     if _collection is None and EMBEDDINGS_AVAILABLE:
         client = chromadb.PersistentClient(path=CHROMA_PATH)
-        _collection = client.get_or_create_collection(name="stolen_history")
+        _collection = client.get_or_create_collection(name="stolen_history_nomic")
     return _collection
 
 
@@ -477,6 +477,106 @@ def advanced_search(
     except Exception as exc:
         return f"Advanced search error: {exc}"
 
+
+
+@app.tool()
+def search_with_contents(query: str, extract_text: bool = True, max_results: int = 3) -> str:
+    """Combined web search and content extraction.
+    Searches the web and automatically extracts the full text of the top results.
+
+    Args:
+        query: The search query
+        extract_text: Whether to extract full page text (default True)
+        max_results: Maximum results to fetch and extract (default 3, max 5)
+    """
+    max_results = min(max_results, 5)
+
+    urls = []
+
+    # Do the search
+    if DDGS_AVAILABLE:
+        try:
+            from duckduckgo_search import DDGS
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results))
+            for r in results:
+                url = r.get('href', r.get('link'))
+                if url:
+                    urls.append((r.get('title', 'No title'), url, r.get('body', r.get('snippet', ''))))
+        except Exception as exc:
+            return f"Search error: {exc}"
+    else:
+        # Fallback HTML search
+        try:
+            resp = httpx.get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": query},
+                timeout=10,
+                headers={"User-Agent": USER_AGENT},
+            )
+            soup = BeautifulSoup(resp.text, "html.parser")
+            results = soup.select(".result__body")[:max_results]
+            for result in results:
+                title_el = result.select_one(".result__title a")
+                snippet_el = result.select_one(".result__snippet")
+                if title_el:
+                    url = title_el.get("href")
+                    if url:
+                        urls.append((
+                            title_el.get_text(strip=True),
+                            url,
+                            snippet_el.get_text(strip=True) if snippet_el else ""
+                        ))
+        except Exception as exc:
+            return f"Search error: {exc}"
+
+    if not urls:
+        return f"No web results found for: '{query}'"
+
+    output = f"─── SEARCH WITH CONTENTS: '{query}' ({len(urls)} results) ───\n\n"
+
+    for i, (title, url, snippet) in enumerate(urls, 1):
+        output += f"[{i}] {title}\nURL: {url}\n"
+        if not extract_text:
+            output += f"Snippet: {snippet}\n\n"
+            continue
+
+        # Extract the page content sequentially (parallel requires async/threads which adds complexity)
+        content_text = extract_page(url, max_chars=4000)
+        output += f"--- Extracted Content ---\n{content_text}\n"
+        output += f"-------------------------\n\n"
+
+    return output
+
+@app.tool()
+def auto_search(query: str, strategy: str = "auto") -> str:
+    """Smart routing search that decides whether to search the vault, the web, or both.
+
+    Args:
+        query: The search query
+        strategy: 'auto' (decides based on vault hits), 'vault_only', or 'web_only'
+    """
+    if strategy == "vault_only":
+        return search_vault(query, n_results=5)
+
+    if strategy == "web_only":
+        return web_search(query, max_results=5)
+
+    if strategy == "auto":
+        # Check vault first
+        vault_res = search_vault(query, n_results=3)
+        if "No matching documents" not in vault_res and "embeddings not loaded" not in vault_res:
+            # Check if vault has good results (e.g. > 100 chars of actual content)
+            if len(vault_res) > 200:
+                output = f"─── AUTO SEARCH: Used Vault ───\n{vault_res}\n"
+                return output
+
+        # If vault is empty/poor, fallback to web
+        web_res = web_search(query, max_results=3)
+        output = f"─── AUTO SEARCH: Used Web (Vault was empty) ───\n{web_res}\n"
+        return output
+
+    return f"Invalid strategy: {strategy}. Use 'auto', 'vault_only', or 'web_only'."
 
 @app.tool()
 def extract_page(url: str, max_chars: int = 8000) -> str:

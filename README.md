@@ -32,7 +32,7 @@ It enforces O(1) Context Bounding (the Silver Hat protocol), ensuring the agent'
 | Component | File | Role |
 |-----------|------|------|
 | Brain | `run_agent.py` | Mistral Large 3 via Ollama; drives tool-call loop |
-| Librarian | `src/mcp_server/server.py` | MCP tools: `search_archives`, `view_thread_history` |
+| Librarian | `src/mcp_server/server.py` | MCP tools: `search_archives`, `view_thread_history`, `search_with_contents`, `auto_search` |
 | Thread Harvester | `src/harvester/engine.py` | Per-thread crawl + Wayback CDX snapshots → `vault.db` |
 | **Site Cloner** | `src/harvester/site_cloner.py` | **Full-domain Markdown mirror with rewritten links** |
 | Vault | `src/vault/schema.sql` | SQLite schema with temporal versioning |
@@ -80,7 +80,7 @@ CLONE_MAX_PAGES = 1000
 - **Full-site Markdown clone** — entire domain mirrored as linked `.md` files; `_index.md` navigation tree auto-generated
 - **Temporal versioning** — `live`, `wayback_oldest`, `wayback_recent` captures stored side-by-side
 - **Immutable vault** — SHA-256 content hashes; MCP server always opens DB in `mode=ro`
-- **Semantic search** — `all-MiniLM-L6-v2` embeddings + ChromaDB, entirely local
+- **Semantic search** — `nomic-embed-text` embeddings + ChromaDB, entirely local
 - **Infinite RAG** — Context7 deep retrieval via `deep_retrieve_context7` allowing infinite scalability with bounded memory
 - **100% local AI** — zero OpenAI / Anthropic; all inference via Ollama
 - **Native tool-calling** — Mistral Large 3 function-calling drives the MCP tool loop

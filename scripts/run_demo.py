@@ -41,7 +41,6 @@ def _build_headers() -> dict:
     return headers
 
 
-
 def _normalize_host(host: str) -> str:
     """Ensure the host has an http(s):// scheme prefix."""
     host = host.strip().rstrip("/")
